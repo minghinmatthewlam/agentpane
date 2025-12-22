@@ -43,4 +43,3 @@ type Snapshot struct {
 	CurrentSession string
 	CurrentPane    string
 }
-

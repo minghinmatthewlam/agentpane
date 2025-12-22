@@ -15,4 +15,3 @@ type RawPane struct {
 	CurrentPath    string
 	PID            string
 }
-

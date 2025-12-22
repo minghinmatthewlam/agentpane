@@ -40,4 +40,3 @@ func LoadBuiltinTemplates() (map[string]Template, error) {
 
 	return templates, nil
 }
-

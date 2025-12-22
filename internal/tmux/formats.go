@@ -15,4 +15,3 @@ const (
 		"#{pane_current_path}" + Delim +
 		"#{pane_pid}"
 )
-

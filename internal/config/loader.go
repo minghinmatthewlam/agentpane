@@ -38,16 +38,21 @@ func LoadAll(cwd string) (*Loaded, error) {
 		return nil, err
 	}
 
-	repoPath := RepoConfigPath(cwd)
 	var repoCfg RepoConfig
 	repoLoaded := false
-	if data, err := os.ReadFile(repoPath); err == nil {
-		if err := yaml.Unmarshal(data, &repoCfg); err != nil {
+	repoPath, found, err := FindRepoConfigPath(cwd)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		if data, err := os.ReadFile(repoPath); err == nil {
+			if err := yaml.Unmarshal(data, &repoCfg); err != nil {
+				return nil, err
+			}
+			repoLoaded = true
+		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
-		repoLoaded = true
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, err
 	}
 
 	base := DefaultConfig()
@@ -81,4 +86,3 @@ func LoadAll(cwd string) (*Loaded, error) {
 		GlobalPath: globalPath,
 	}, nil
 }
-

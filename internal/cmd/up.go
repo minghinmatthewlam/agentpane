@@ -11,6 +11,7 @@ import (
 func NewUpCmd(a *app.App) *cobra.Command {
 	var (
 		sessionName string
+		template    string
 		detach      bool
 	)
 
@@ -26,6 +27,7 @@ func NewUpCmd(a *app.App) *cobra.Command {
 			result, err := a.Up(app.UpOptions{
 				Cwd:          cwd,
 				ExplicitName: sessionName,
+				Template:     template,
 				Detach:       detach,
 			})
 			if err != nil {
@@ -52,8 +54,8 @@ func NewUpCmd(a *app.App) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&sessionName, "name", "n", "", "Explicit session name")
+	cmd.Flags().StringVarP(&template, "template", "t", "", "Use specific template")
 	cmd.Flags().BoolVarP(&detach, "detach", "d", false, "Create but don't attach")
 
 	return cmd
 }
-

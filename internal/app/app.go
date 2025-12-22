@@ -38,4 +38,3 @@ func (a *App) Must(err error) {
 		panic(fmt.Sprintf("agentpane: %v", err))
 	}
 }
-

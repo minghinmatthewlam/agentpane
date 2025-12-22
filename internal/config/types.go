@@ -29,4 +29,3 @@ type RepoConfig struct {
 type Layout struct {
 	Panes []PaneSpec `yaml:"panes"`
 }
-

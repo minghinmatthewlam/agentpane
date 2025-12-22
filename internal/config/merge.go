@@ -35,4 +35,3 @@ func Merge(base *Config, overlay *Config) *Config {
 	}
 	return out
 }
-

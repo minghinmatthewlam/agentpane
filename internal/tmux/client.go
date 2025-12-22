@@ -46,6 +46,17 @@ func (c *Client) CurrentSession() (string, error) {
 	if !c.InTmux() {
 		return "", ErrNotInTmux
 	}
+
+	// Prefer targeting the current pane to avoid "no current client" issues
+	// when running inside a detached session or during scripted tests.
+	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
+		out, err := c.runOutput("display-message", "-p", "-t", pane, "#{session_name}")
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(out), nil
+	}
+
 	out, err := c.runOutput("display-message", "-p", "#{session_name}")
 	if err != nil {
 		return "", err
@@ -57,6 +68,11 @@ func (c *Client) CurrentPane() (string, error) {
 	if !c.InTmux() {
 		return "", ErrNotInTmux
 	}
+
+	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
+		return pane, nil
+	}
+
 	out, err := c.runOutput("display-message", "-p", "#{pane_id}")
 	if err != nil {
 		return "", err

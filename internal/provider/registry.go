@@ -89,4 +89,3 @@ func DefaultShell() string {
 	}
 	return "sh"
 }
-

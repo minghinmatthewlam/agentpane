@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
+	"github.com/minghinmatthewlam/agentpane/internal/config"
 	"github.com/minghinmatthewlam/agentpane/internal/domain"
 	"github.com/minghinmatthewlam/agentpane/internal/provider"
 )
@@ -17,6 +19,7 @@ import (
 type UpOptions struct {
 	Cwd          string
 	ExplicitName string
+	Template     string
 	Detach       bool
 }
 
@@ -36,7 +39,32 @@ type UpResult struct {
 }
 
 func (a *App) Up(opts UpOptions) (UpResult, error) {
-	sessionName, err := a.resolveSessionName(opts.Cwd, opts.ExplicitName)
+	loaded, err := config.LoadAll(opts.Cwd)
+	if err != nil {
+		return UpResult{}, err
+	}
+
+	a.providers = provider.NewRegistry()
+	for k, v := range loaded.Merged.Providers {
+		if v.Command == "" {
+			continue
+		}
+		switch k {
+		case "codex":
+			a.providers.Override(domain.PaneCodex, v.Command)
+		case "claude":
+			a.providers.Override(domain.PaneClaude, v.Command)
+		case "shell":
+			a.providers.Override(domain.PaneShell, v.Command)
+		}
+	}
+
+	baseOverride := ""
+	if opts.ExplicitName == "" && loaded.Repo != nil && strings.TrimSpace(loaded.Repo.Session) != "" {
+		baseOverride = strings.TrimSpace(loaded.Repo.Session)
+	}
+
+	sessionName, err := a.resolveSessionName(opts.Cwd, opts.ExplicitName, baseOverride)
 	if err != nil {
 		return UpResult{}, err
 	}
@@ -55,7 +83,11 @@ func (a *App) Up(opts UpOptions) (UpResult, error) {
 	}
 
 	if !exists {
-		warnings, err := a.createDuoSession(sessionName, opts.Cwd)
+		panes, err := resolvePanes(loaded, opts.Template)
+		if err != nil {
+			return UpResult{}, err
+		}
+		warnings, err := a.createSessionFromPanes(sessionName, opts.Cwd, panes)
 		if err != nil {
 			return UpResult{}, err
 		}
@@ -78,7 +110,34 @@ func (a *App) Up(opts UpOptions) (UpResult, error) {
 	return UpResult{Action: ActionAttached, SessionName: sessionName}, nil
 }
 
-func (a *App) createDuoSession(name, cwd string) ([]string, error) {
+func resolvePanes(loaded *config.Loaded, explicitTemplate string) ([]config.PaneSpec, error) {
+	if explicitTemplate != "" {
+		tmpl, ok := loaded.Merged.Templates[explicitTemplate]
+		if !ok {
+			names := make([]string, 0, len(loaded.Merged.Templates))
+			for k := range loaded.Merged.Templates {
+				names = append(names, k)
+			}
+			sort.Strings(names)
+			return nil, fmt.Errorf("unknown template %q (available: %s)", explicitTemplate, strings.Join(names, ", "))
+		}
+		return tmpl.Panes, nil
+	}
+
+	if loaded.Repo != nil && len(loaded.Repo.Layout.Panes) > 0 {
+		return loaded.Repo.Layout.Panes, nil
+	}
+
+	if loaded.Merged.DefaultTemplate != "" {
+		if tmpl, ok := loaded.Merged.Templates[loaded.Merged.DefaultTemplate]; ok {
+			return tmpl.Panes, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no panes resolved (missing templates and repo layout)")
+}
+
+func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) ([]string, error) {
 	if err := a.tmux.NewSession(name, cwd); err != nil {
 		return nil, err
 	}
@@ -89,59 +148,42 @@ func (a *App) createDuoSession(name, cwd string) ([]string, error) {
 
 	var warnings []string
 
-	panes, err := a.tmux.ListPanes(name)
+	tmuxPanes, err := a.tmux.ListPanes(name)
 	if err != nil {
 		return nil, err
 	}
-	if len(panes) != 1 {
-		return nil, fmt.Errorf("expected 1 pane after new session, found %d", len(panes))
+	if len(tmuxPanes) != 1 {
+		return nil, fmt.Errorf("expected 1 pane after new session, found %d", len(tmuxPanes))
 	}
-	firstPaneID := panes[0].ID
+	firstPaneID := tmuxPanes[0].ID
 
-	// Duo layout: codex + claude.
 	typeCounts := map[domain.PaneType]int{}
 
-	w, err := a.configurePane(firstPaneID, domain.PaneCodex, typeCounts)
+	if len(panes) == 0 {
+		return nil, fmt.Errorf("resolved layout has no panes")
+	}
+
+	// Configure first pane in-place, then split for the rest.
+	w, err := a.configurePaneSpec(firstPaneID, panes[0], typeCounts)
 	if err != nil {
 		return nil, err
 	}
 	warnings = append(warnings, w...)
 
-	secondPaneID, err := a.tmux.SplitPane(name, cwd)
-	if err != nil {
-		return nil, err
+	for i := 1; i < len(panes); i++ {
+		newPaneID, err := a.tmux.SplitPane(name, cwd)
+		if err != nil {
+			return nil, err
+		}
+		w, err := a.configurePaneSpec(newPaneID, panes[i], typeCounts)
+		if err != nil {
+			return nil, err
+		}
+		warnings = append(warnings, w...)
 	}
-	w, err = a.configurePane(secondPaneID, domain.PaneClaude, typeCounts)
-	if err != nil {
-		return nil, err
-	}
-	warnings = append(warnings, w...)
 
 	_ = a.tmux.SelectLayout(name, "tiled")
 
-	return warnings, nil
-}
-
-func (a *App) configurePane(paneID string, desired domain.PaneType, typeCounts map[domain.PaneType]int) ([]string, error) {
-	prov, actualType, ok := a.providers.GetWithFallback(desired)
-	if !ok {
-		return nil, fmt.Errorf("unknown provider type: %s", desired)
-	}
-
-	var warnings []string
-	if actualType != desired {
-		warnings = append(warnings, fmt.Sprintf("%s not found in PATH, created shell pane instead", desired))
-	}
-
-	typeCounts[actualType]++
-	title := fmt.Sprintf("%s%d", prov.TitlePrefix, typeCounts[actualType])
-
-	if err := a.tmux.SetPaneTitle(paneID, title); err != nil {
-		return nil, err
-	}
-	if err := a.launchProvider(paneID, prov); err != nil {
-		return nil, err
-	}
 	return warnings, nil
 }
 
@@ -155,9 +197,53 @@ func (a *App) launchProvider(paneID string, prov *provider.Provider) error {
 	return a.tmux.SendEnter(paneID)
 }
 
+func (a *App) configurePaneSpec(paneID string, spec config.PaneSpec, typeCounts map[domain.PaneType]int) ([]string, error) {
+	desired, err := parsePaneType(spec.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	prov, actualType, ok := a.providers.GetWithFallback(desired)
+	if !ok {
+		return nil, fmt.Errorf("unknown provider type: %s", desired)
+	}
+
+	var warnings []string
+	if actualType != desired {
+		warnings = append(warnings, fmt.Sprintf("%s not found in PATH, created shell pane instead", desired))
+	}
+
+	title := strings.TrimSpace(spec.Title)
+	if title == "" {
+		typeCounts[actualType]++
+		title = fmt.Sprintf("%s%d", prov.TitlePrefix, typeCounts[actualType])
+	}
+
+	if err := a.tmux.SetPaneTitle(paneID, title); err != nil {
+		return nil, err
+	}
+	if err := a.launchProvider(paneID, prov); err != nil {
+		return nil, err
+	}
+	return warnings, nil
+}
+
+func parsePaneType(s string) (domain.PaneType, error) {
+	switch s {
+	case "codex":
+		return domain.PaneCodex, nil
+	case "claude":
+		return domain.PaneClaude, nil
+	case "shell":
+		return domain.PaneShell, nil
+	default:
+		return "", fmt.Errorf("unknown pane type: %s", s)
+	}
+}
+
 var sessionNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
-func (a *App) resolveSessionName(cwd string, explicit string) (string, error) {
+func (a *App) resolveSessionName(cwd string, explicit string, baseOverride string) (string, error) {
 	if explicit != "" {
 		if !sessionNameRe.MatchString(explicit) {
 			return "", fmt.Errorf("invalid session name %q (use letters, numbers, dot, underscore, dash)", explicit)
@@ -165,7 +251,10 @@ func (a *App) resolveSessionName(cwd string, explicit string) (string, error) {
 		return explicit, nil
 	}
 
-	base := filepath.Base(cwd)
+	base := baseOverride
+	if base == "" {
+		base = filepath.Base(cwd)
+	}
 	if !sessionNameRe.MatchString(base) {
 		base = sanitizeSessionName(base)
 	}

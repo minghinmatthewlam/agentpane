@@ -8,4 +8,3 @@ func DefaultConfig() *Config {
 		Templates:       map[string]Template{},
 	}
 }
-
