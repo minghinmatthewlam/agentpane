@@ -104,11 +104,11 @@ func (c *Client) NewSession(name, cwd string) error {
 }
 
 func (c *Client) AttachSession(name string) error {
-	return c.run("attach-session", "-t", name)
+	return c.runInteractive("attach-session", "-t", name)
 }
 
 func (c *Client) SwitchClient(name string) error {
-	return c.run("switch-client", "-t", name)
+	return c.runInteractive("switch-client", "-t", name)
 }
 
 func (c *Client) KillSession(name string) error {
@@ -192,6 +192,20 @@ func (c *Client) SetEnv(name, value string) error {
 func (c *Client) run(args ...string) error {
 	_, err := c.runOutput(args...)
 	return err
+}
+
+func (c *Client) runInteractive(args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	fullArgs := append([]string{}, c.baseArgs...)
+	fullArgs = append(fullArgs, args...)
+
+	cmd := exec.CommandContext(ctx, c.tmuxPath, fullArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func (c *Client) runOutput(args ...string) (string, error) {
