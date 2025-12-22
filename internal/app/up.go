@@ -175,7 +175,13 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 	})
 
 	for i := 1; i < len(panes); i++ {
-		newPaneID, err := a.tmux.SplitPane(name, cwd)
+		var newPaneID string
+		var err error
+		if len(panes) == 2 {
+			newPaneID, err = a.tmux.SplitPaneHorizontal(name, cwd)
+		} else {
+			newPaneID, err = a.tmux.SplitPane(name, cwd)
+		}
 		if err != nil {
 			return nil, err
 		}

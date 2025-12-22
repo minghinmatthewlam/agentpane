@@ -142,6 +142,14 @@ func (c *Client) SplitPane(session, cwd string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+func (c *Client) SplitPaneHorizontal(session, cwd string) (string, error) {
+	out, err := c.runOutput("split-window", "-h", "-t", session+":0", "-c", cwd, "-P", "-F", "#{pane_id}")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (c *Client) SetPaneTitle(paneID, title string) error {
 	return c.run("select-pane", "-t", paneID, "-T", title)
 }

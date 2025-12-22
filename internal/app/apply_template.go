@@ -94,7 +94,13 @@ func (a *App) ApplyTemplate(opts ApplyTemplateOptions) (ApplyTemplateResult, err
 	})
 
 	for i := 1; i < len(tmpl.Panes); i++ {
-		newPaneID, err := a.tmux.SplitPane(session, sessionPath)
+		var newPaneID string
+		var err error
+		if len(tmpl.Panes) == 2 {
+			newPaneID, err = a.tmux.SplitPaneHorizontal(session, sessionPath)
+		} else {
+			newPaneID, err = a.tmux.SplitPane(session, sessionPath)
+		}
 		if err != nil {
 			return ApplyTemplateResult{}, err
 		}
