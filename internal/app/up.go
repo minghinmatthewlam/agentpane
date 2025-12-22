@@ -175,7 +175,11 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 		warnings = append(warnings, res.Warnings...)
 	}
 
-	_ = a.tmux.SelectLayout(name, "tiled")
+	layout := "tiled"
+	if len(panes) == 2 {
+		layout = "even-horizontal"
+	}
+	_ = a.tmux.SelectLayout(name, layout)
 
 	return warnings, nil
 }

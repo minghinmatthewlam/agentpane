@@ -111,7 +111,11 @@ func (a *App) ApplyTemplate(opts ApplyTemplateOptions) (ApplyTemplateResult, err
 		})
 	}
 
-	_ = a.tmux.SelectLayout(session, "tiled")
+	layout := "tiled"
+	if len(tmpl.Panes) == 2 {
+		layout = "even-horizontal"
+	}
+	_ = a.tmux.SelectLayout(session, layout)
 
 	if err := a.replaceSessionState(session, sessionPath, paneStates); err != nil {
 		return ApplyTemplateResult{}, err
