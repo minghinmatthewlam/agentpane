@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/minghinmatthewlam/agentpane/internal/app"
@@ -24,7 +25,14 @@ func NewInitCmd(a *app.App) *cobra.Command {
 				return err
 			}
 
-			path := config.RepoConfigPath(cwd)
+			targetDir := cwd
+			if root, ok, err := findRepoRoot(cwd); err == nil && ok {
+				targetDir = root
+			} else if err != nil {
+				return err
+			}
+
+			path := config.RepoConfigPath(targetDir)
 			if _, err := os.Stat(path); err == nil {
 				return fmt.Errorf("%s already exists", path)
 			} else if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -64,4 +72,22 @@ func NewInitCmd(a *app.App) *cobra.Command {
 
 	cmd.Flags().BoolVar(&fromCurrent, "from-current", false, "Generate layout from current tmux session")
 	return cmd
+}
+
+func findRepoRoot(start string) (string, bool, error) {
+	dir := start
+	for {
+		gitPath := filepath.Join(dir, ".git")
+		if _, err := os.Stat(gitPath); err == nil {
+			return dir, true, nil
+		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return "", false, err
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false, nil
+		}
+		dir = parent
+	}
 }

@@ -1,10 +1,6 @@
 package app
 
 import (
-	"errors"
-	"os"
-	"strings"
-
 	"github.com/minghinmatthewlam/agentpane/internal/domain"
 	"github.com/minghinmatthewlam/agentpane/internal/provider"
 	"github.com/minghinmatthewlam/agentpane/internal/state"
@@ -24,14 +20,7 @@ func (a *App) Snapshot() (domain.Snapshot, error) {
 		return domain.Snapshot{}, err
 	}
 
-	st, err := a.state.Load()
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			st = state.NewStore()
-		} else {
-			st = state.NewStore()
-		}
-	}
+	st := a.loadStateOrNew()
 
 	detector := provider.NewStatusDetector(a.providers)
 
@@ -50,7 +39,7 @@ func (a *App) Snapshot() (domain.Snapshot, error) {
 				pane.Title = sp.Title
 				pane.Type = domain.PaneType(sp.Type)
 			} else {
-				pane.Type = inferPaneType(pane.CurrentCommand, pane.Title)
+				pane.Type = domain.InferPaneType(pane.CurrentCommand, pane.Title)
 			}
 			pane.Status = detector.DetectStatus(pane.PID, pane.Type)
 		}
@@ -70,24 +59,4 @@ func (a *App) Snapshot() (domain.Snapshot, error) {
 	}
 
 	return snapshot, nil
-}
-
-func inferPaneType(command, title string) domain.PaneType {
-	cmd := strings.ToLower(command)
-	switch {
-	case strings.Contains(cmd, "codex"):
-		return domain.PaneCodex
-	case strings.Contains(cmd, "claude"):
-		return domain.PaneClaude
-	}
-	t := strings.ToLower(strings.TrimSpace(title))
-	switch {
-	case strings.HasPrefix(t, "codex"):
-		return domain.PaneCodex
-	case strings.HasPrefix(t, "claude"):
-		return domain.PaneClaude
-	case strings.HasPrefix(t, "shell"):
-		return domain.PaneShell
-	}
-	return domain.PaneUnknown
 }

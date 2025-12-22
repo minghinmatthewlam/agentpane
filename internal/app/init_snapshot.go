@@ -2,9 +2,9 @@ package app
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/minghinmatthewlam/agentpane/internal/config"
+	"github.com/minghinmatthewlam/agentpane/internal/domain"
 )
 
 func (a *App) SnapshotCurrentLayout() (config.Layout, string, error) {
@@ -24,22 +24,10 @@ func (a *App) SnapshotCurrentLayout() (config.Layout, string, error) {
 	specs := make([]config.PaneSpec, 0, len(panes))
 	for _, p := range panes {
 		specs = append(specs, config.PaneSpec{
-			Type:  inferTypeFromTitle(p.Title),
+			Type:  string(domain.InferPaneType("", p.Title)),
 			Title: p.Title,
 		})
 	}
 
 	return config.Layout{Panes: specs}, session, nil
-}
-
-func inferTypeFromTitle(title string) string {
-	t := strings.ToLower(strings.TrimSpace(title))
-	switch {
-	case strings.HasPrefix(t, "codex"):
-		return "codex"
-	case strings.HasPrefix(t, "claude"):
-		return "claude"
-	default:
-		return "shell"
-	}
 }

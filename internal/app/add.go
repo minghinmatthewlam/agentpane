@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -94,13 +93,11 @@ func (a *App) applyConfigOverrides(cwd string) error {
 func (a *App) nextAutoTitle(session string, t domain.PaneType, prov *provider.Provider) (string, error) {
 	count := 0
 
-	st, err := a.state.Load()
-	if err == nil {
-		if ss, ok := st.Sessions[session]; ok {
-			for _, p := range ss.Panes {
-				if p.Type == string(t) {
-					count++
-				}
+	st := a.loadStateOrNew()
+	if ss, ok := st.Sessions[session]; ok {
+		for _, p := range ss.Panes {
+			if p.Type == string(t) {
+				count++
 			}
 		}
 	}
@@ -121,14 +118,7 @@ func (a *App) nextAutoTitle(session string, t domain.PaneType, prov *provider.Pr
 }
 
 func (a *App) updateStateForNewPane(session, paneID string, t domain.PaneType, title string) error {
-	st, err := a.state.Load()
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			st = state.NewStore()
-		} else {
-			st = state.NewStore()
-		}
-	}
+	st := a.loadStateOrNew()
 
 	ss, ok := st.Sessions[session]
 	if !ok {
@@ -148,5 +138,8 @@ func (a *App) updateStateForNewPane(session, paneID string, t domain.PaneType, t
 		CreatedAt: time.Now(),
 	})
 
+	if err := a.attachServerID(st); err != nil {
+		return err
+	}
 	return a.state.Save(st)
 }

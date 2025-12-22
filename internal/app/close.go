@@ -1,22 +1,11 @@
 package app
 
-import (
-	"errors"
-	"os"
-)
-
 func (a *App) ClosePane(paneID string) error {
 	if err := a.tmux.KillPane(paneID); err != nil {
 		return err
 	}
 
-	st, err := a.state.Load()
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		return nil
-	}
+	st := a.loadStateOrNew()
 
 	for _, session := range st.Sessions {
 		filtered := session.Panes[:0]
@@ -28,5 +17,8 @@ func (a *App) ClosePane(paneID string) error {
 		session.Panes = filtered
 	}
 
+	if err := a.attachServerID(st); err != nil {
+		return err
+	}
 	return a.state.Save(st)
 }

@@ -41,6 +41,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc", "q":
 			return m, tea.Quit
+		case "enter":
+			return m, m.searchCmd()
 		}
 	case resultsMsg:
 		if msg.err != nil {
@@ -54,7 +56,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
-	return m, tea.Batch(cmd, m.searchCmd())
+	return m, cmd
 }
 
 func (m Model) searchCmd() tea.Cmd {

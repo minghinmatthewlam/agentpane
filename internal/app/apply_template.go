@@ -1,9 +1,7 @@
 package app
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"time"
 
@@ -75,7 +73,9 @@ func (a *App) ApplyTemplate(opts ApplyTemplateOptions) (ApplyTemplateResult, err
 	// Keep first pane, kill the rest.
 	firstPaneID := panes[0].ID
 	for i := 1; i < len(panes); i++ {
-		_ = a.tmux.KillPane(panes[i].ID)
+		if err := a.tmux.KillPane(panes[i].ID); err != nil {
+			a.logger.Printf("failed to kill pane %s: %v", panes[i].ID, err)
+		}
 	}
 
 	typeCounts := map[domain.PaneType]int{}
@@ -129,13 +129,9 @@ func (a *App) ApplyTemplate(opts ApplyTemplateOptions) (ApplyTemplateResult, err
 }
 
 func (a *App) replaceSessionState(session, path string, panes []*state.PaneState) error {
-	st, err := a.state.Load()
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			st = state.NewStore()
-		} else {
-			st = state.NewStore()
-		}
+	st := a.loadStateOrNew()
+	if err := a.attachServerID(st); err != nil {
+		return err
 	}
 
 	st.Sessions[session] = &state.SessionState{

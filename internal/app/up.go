@@ -10,10 +10,12 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/minghinmatthewlam/agentpane/internal/config"
 	"github.com/minghinmatthewlam/agentpane/internal/domain"
 	"github.com/minghinmatthewlam/agentpane/internal/provider"
+	"github.com/minghinmatthewlam/agentpane/internal/state"
 )
 
 type UpOptions struct {
@@ -156,12 +158,21 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 		return nil, fmt.Errorf("resolved layout has no panes")
 	}
 
+	now := time.Now()
+	paneStates := make([]*state.PaneState, 0, len(panes))
+
 	// Configure first pane in-place, then split for the rest.
 	firstRes, err := a.configurePaneSpec(firstPaneID, panes[0], typeCounts)
 	if err != nil {
 		return nil, err
 	}
 	warnings = append(warnings, firstRes.Warnings...)
+	paneStates = append(paneStates, &state.PaneState{
+		TmuxID:    firstPaneID,
+		Type:      string(firstRes.Type),
+		Title:     firstRes.Title,
+		CreatedAt: now,
+	})
 
 	for i := 1; i < len(panes); i++ {
 		newPaneID, err := a.tmux.SplitPane(name, cwd)
@@ -173,6 +184,12 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 			return nil, err
 		}
 		warnings = append(warnings, res.Warnings...)
+		paneStates = append(paneStates, &state.PaneState{
+			TmuxID:    newPaneID,
+			Type:      string(res.Type),
+			Title:     res.Title,
+			CreatedAt: now,
+		})
 	}
 
 	layout := "tiled"
@@ -180,6 +197,10 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 		layout = "even-horizontal"
 	}
 	_ = a.tmux.SelectLayout(name, layout)
+
+	if err := a.replaceSessionState(name, cwd, paneStates); err != nil {
+		return nil, err
+	}
 
 	return warnings, nil
 }
@@ -201,7 +222,7 @@ type paneConfigResult struct {
 }
 
 func (a *App) configurePaneSpec(paneID string, spec config.PaneSpec, typeCounts map[domain.PaneType]int) (paneConfigResult, error) {
-	desired, err := parsePaneType(spec.Type)
+	desired, err := domain.ParsePaneType(spec.Type)
 	if err != nil {
 		return paneConfigResult{}, err
 	}
@@ -233,19 +254,6 @@ func (a *App) configurePaneSpec(paneID string, spec config.PaneSpec, typeCounts 
 		Title:    title,
 		Warnings: warnings,
 	}, nil
-}
-
-func parsePaneType(s string) (domain.PaneType, error) {
-	switch s {
-	case "codex":
-		return domain.PaneCodex, nil
-	case "claude":
-		return domain.PaneClaude, nil
-	case "shell":
-		return domain.PaneShell, nil
-	default:
-		return "", fmt.Errorf("unknown pane type: %s", s)
-	}
 }
 
 var sessionNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)

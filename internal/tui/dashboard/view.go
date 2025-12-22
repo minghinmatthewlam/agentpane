@@ -51,7 +51,11 @@ func (m Model) renderDashboard() string {
 
 	content := lipgloss.JoinHorizontal(lipgloss.Top, leftStyled, rightStyled)
 
+	status := m.renderStatus()
 	footer := m.renderFooter()
+	if status != "" {
+		return lipgloss.JoinVertical(lipgloss.Left, header, content, status, footer)
+	}
 	return lipgloss.JoinVertical(lipgloss.Left, header, content, footer)
 }
 
@@ -155,6 +159,16 @@ func (m Model) renderWithDialog() string {
 	}
 	dialogView := m.dialog.View()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialogView)
+}
+
+func (m Model) renderStatus() string {
+	if m.errorMsg != "" {
+		return common.ErrorStyle.Render("Error: " + m.errorMsg)
+	}
+	if m.statusMsg != "" {
+		return common.StatusStyle.Render(m.statusMsg)
+	}
+	return ""
 }
 
 func (m Model) renderTemplatesList() string {

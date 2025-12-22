@@ -1,10 +1,6 @@
 package tmux
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-)
+import "strings"
 
 func parseTable(output string, expectedFields int) [][]string {
 	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
@@ -57,12 +53,4 @@ func ParsePanes(output string) ([]RawPane, error) {
 		})
 	}
 	return out, nil
-}
-
-func parseInt(s string) (int, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return 0, fmt.Errorf("empty int")
-	}
-	return strconv.Atoi(s)
 }

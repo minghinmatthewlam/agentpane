@@ -94,14 +94,7 @@ func promptForTitle(current string) (string, error) {
 }
 
 func (a *App) updateStateForRename(session, paneID, title string) error {
-	st, err := a.state.Load()
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			st = state.NewStore()
-		} else {
-			st = state.NewStore()
-		}
-	}
+	st := a.loadStateOrNew()
 
 	ss, ok := st.Sessions[session]
 	if !ok {
@@ -119,6 +112,9 @@ func (a *App) updateStateForRename(session, paneID, title string) error {
 		if p.TmuxID == paneID {
 			p.Title = title
 			p.RenamedAt = &now
+			if err := a.attachServerID(st); err != nil {
+				return err
+			}
 			return a.state.Save(st)
 		}
 	}
@@ -131,5 +127,8 @@ func (a *App) updateStateForRename(session, paneID, title string) error {
 		RenamedAt: &now,
 	})
 
+	if err := a.attachServerID(st); err != nil {
+		return err
+	}
 	return a.state.Save(st)
 }

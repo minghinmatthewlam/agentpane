@@ -36,4 +36,12 @@ var (
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary).
 			Padding(1, 0)
+
+	StatusStyle = lipgloss.NewStyle().
+			Foreground(ColorSuccess).
+			Padding(0, 0)
+
+	ErrorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("203")).
+			Padding(0, 0)
 )

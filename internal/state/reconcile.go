@@ -1,7 +1,6 @@
 package state
 
 import (
-	"strings"
 	"time"
 
 	"github.com/minghinmatthewlam/agentpane/internal/domain"
@@ -116,7 +115,7 @@ func reconcileSession(stateSession *SessionState, tmuxSession domain.Session, ou
 		output.NewPanes = append(output.NewPanes, NewPaneInfo{
 			SessionName:  tmuxSession.Name,
 			PaneID:       tmuxPane.ID,
-			InferredType: inferPaneType(tmuxPane),
+			InferredType: domain.InferPaneTypeFromPane(tmuxPane),
 		})
 	}
 
@@ -135,7 +134,7 @@ func createSessionState(tmuxSession domain.Session, output *ReconcileOutput) *Se
 		output.NewPanes = append(output.NewPanes, NewPaneInfo{
 			SessionName:  tmuxSession.Name,
 			PaneID:       pane.ID,
-			InferredType: inferPaneType(pane),
+			InferredType: domain.InferPaneTypeFromPane(pane),
 		})
 	}
 
@@ -145,28 +144,8 @@ func createSessionState(tmuxSession domain.Session, output *ReconcileOutput) *Se
 func createPaneState(pane domain.Pane) *PaneState {
 	return &PaneState{
 		TmuxID:    pane.ID,
-		Type:      string(inferPaneType(pane)),
+		Type:      string(domain.InferPaneTypeFromPane(pane)),
 		Title:     pane.Title,
 		CreatedAt: time.Now(),
 	}
-}
-
-func inferPaneType(pane domain.Pane) domain.PaneType {
-	cmd := strings.ToLower(pane.CurrentCommand)
-	if strings.Contains(cmd, "codex") {
-		return domain.PaneCodex
-	}
-	if strings.Contains(cmd, "claude") {
-		return domain.PaneClaude
-	}
-	title := strings.ToLower(strings.TrimSpace(pane.Title))
-	switch {
-	case strings.HasPrefix(title, "codex"):
-		return domain.PaneCodex
-	case strings.HasPrefix(title, "claude"):
-		return domain.PaneClaude
-	case strings.HasPrefix(title, "shell"):
-		return domain.PaneShell
-	}
-	return domain.PaneUnknown
 }

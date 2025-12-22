@@ -11,7 +11,7 @@ func (m Model) View() string {
 	var b strings.Builder
 	b.WriteString("Search\n\n")
 	b.WriteString(m.input.View())
-	b.WriteString("\n\n")
+	b.WriteString("\n\n[Enter] search  [Esc] close\n\n")
 
 	if m.errMsg != "" {
 		b.WriteString("Error: " + m.errMsg + "\n")
@@ -27,7 +27,6 @@ func (m Model) View() string {
 		}
 	}
 
-	b.WriteString("\n[Esc] close")
 	style := lipgloss.NewStyle().
 		Padding(1, 2)
 	return style.Render(b.String())

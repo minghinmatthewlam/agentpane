@@ -20,7 +20,7 @@ func NewAddCmd(a *app.App) *cobra.Command {
 				return fmt.Errorf("must be run inside a tmux session")
 			}
 
-			paneType, err := parsePaneType(args[0])
+			paneType, err := domain.ParsePaneType(args[0])
 			if err != nil {
 				return err
 			}
@@ -43,17 +43,4 @@ func NewAddCmd(a *app.App) *cobra.Command {
 
 	cmd.Flags().StringVarP(&title, "title", "t", "", "Custom pane title")
 	return cmd
-}
-
-func parsePaneType(s string) (domain.PaneType, error) {
-	switch s {
-	case "codex":
-		return domain.PaneCodex, nil
-	case "claude":
-		return domain.PaneClaude, nil
-	case "shell":
-		return domain.PaneShell, nil
-	default:
-		return "", fmt.Errorf("unknown pane type: %s (use codex, claude, or shell)", s)
-	}
 }

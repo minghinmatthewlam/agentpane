@@ -3,8 +3,6 @@ package app
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
-	"os"
 	"strconv"
 	"time"
 
@@ -19,15 +17,9 @@ func (a *App) Reconcile() error {
 		return err
 	}
 
-	current, err := a.state.Load()
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			current = state.NewStore()
-		} else {
-			current = state.NewStore()
-		}
-	}
+	current := a.loadStateOrNew()
 	if current.ServerID != "" && current.ServerID != serverID {
+		a.logger.Printf("state server id mismatch (state=%s, tmux=%s); resetting state", current.ServerID, serverID)
 		current = state.NewStore()
 	}
 	current.ServerID = serverID
