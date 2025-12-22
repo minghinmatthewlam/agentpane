@@ -16,6 +16,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.AddCommand(NewAddCmd(a))
 	root.AddCommand(NewRenameCmd(a))
 	root.AddCommand(NewDashboardCmd(a))
+	root.AddCommand(NewPopupCmd(a))
 	root.AddCommand(NewTemplatesCmd(a))
 	root.AddCommand(NewHelpCmd())
 	root.AddCommand(NewSearchCmd(a))

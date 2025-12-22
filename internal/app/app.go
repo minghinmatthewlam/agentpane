@@ -45,6 +45,10 @@ func (a *App) Attach(name string) error {
 	return a.tmux.AttachSession(name)
 }
 
+func (a *App) OpenPopup(command string) error {
+	return a.tmux.DisplayPopup(command)
+}
+
 func (a *App) Must(err error) {
 	if err != nil {
 		panic(fmt.Sprintf("agentpane: %v", err))

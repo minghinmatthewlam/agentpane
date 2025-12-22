@@ -38,6 +38,10 @@ func NewUpCmd(a *app.App) *cobra.Command {
 				fmt.Fprintln(os.Stderr, "Warning:", w)
 			}
 
+			if result.KeybindingAdded {
+				fmt.Fprintln(os.Stderr, "Added Prefix+g keybinding to ~/.tmux.conf (run: tmux source ~/.tmux.conf)")
+			}
+
 			switch result.Action {
 			case app.ActionAlreadyIn:
 				fmt.Printf("Already in session %s\n", result.SessionName)

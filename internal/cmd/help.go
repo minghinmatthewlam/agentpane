@@ -18,29 +18,27 @@ COMMANDS:
   add <type>      Add pane (codex, claude, shell)
   rename [name]   Rename current pane
   dashboard       Open navigation TUI
+  popup           Open dashboard as tmux popup
   templates       Browse and apply templates
   search          Search across sessions/panes
   init            Generate .agentpane.yml
 
-RECOMMENDED TMUX CONFIGURATION:
+QUICK ACCESS (add to ~/.tmux.conf):
 
-Add this to your ~/.tmux.conf to open dashboard with Prefix+g:
+    bind-key g run-shell "agentpane popup"
 
-    bind-key g run-shell "agentpane dashboard"
-
-Then reload tmux config:
-
-    tmux source-file ~/.tmux.conf
+Then press Prefix+g from any pane to open the dashboard popup.
+Reload config with: tmux source-file ~/.tmux.conf
 
 DASHBOARD KEYS:
-  ↑/k, ↓/j    Navigate
+  ←/→, h/l    Switch between sessions (repos)
+  ↑/↓, j/k    Navigate panes
   Tab         Switch panels
-  t           Switch tabs
-  Enter       Attach / Apply
+  Enter       Attach to session
   a           Add pane
   r           Rename pane
   x           Close pane
-  ?           Help
+  t           Switch tabs (Sessions/Templates)
   q           Quit
 `)
 		},

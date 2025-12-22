@@ -197,6 +197,10 @@ func (c *Client) SetEnv(name, value string) error {
 	return c.run("set-environment", "-g", name, value)
 }
 
+func (c *Client) DisplayPopup(command string) error {
+	return c.run("display-popup", "-E", "-w", "80%", "-h", "80%", command)
+}
+
 func (c *Client) run(args ...string) error {
 	_, err := c.runOutput(args...)
 	return err

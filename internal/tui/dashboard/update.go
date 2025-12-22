@@ -62,6 +62,20 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.focus = FocusLeft
 		}
 		return m, nil
+	case "left", "h":
+		// Move to previous session tab
+		if m.sessionIndex > 0 {
+			m.sessionIndex--
+			m.paneIndex = 0
+		}
+		return m, nil
+	case "right", "l":
+		// Move to next session tab
+		if m.sessionIndex < len(m.snapshot.Sessions)-1 {
+			m.sessionIndex++
+			m.paneIndex = 0
+		}
+		return m, nil
 	case "up", "k":
 		if m.focus == FocusLeft {
 			if m.tab == TabTemplates {

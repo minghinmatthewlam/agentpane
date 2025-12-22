@@ -33,6 +33,19 @@ var (
 			Bold(true).
 			Foreground(ColorPrimary)
 
+	SessionTabStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Foreground(ColorSecondary)
+
+	ActiveSessionTabStyle = lipgloss.NewStyle().
+				Padding(0, 1).
+				Bold(true).
+				Foreground(lipgloss.Color("229")).
+				Background(ColorPrimary)
+
+	CurrentSessionMarker = lipgloss.NewStyle().
+				Foreground(ColorSuccess)
+
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary).
 			Padding(1, 0)

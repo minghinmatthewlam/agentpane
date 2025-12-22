@@ -130,6 +130,10 @@ func (m Model) renderPanesList() string {
 }
 
 func (m Model) renderHeader() string {
+	// Line 1: Session tabs for quick switching between repos
+	sessionBar := m.renderSessionTabs()
+
+	// Line 2: Mode tabs (Sessions/Templates)
 	tabs := []string{"Sessions", "Templates"}
 	var tabViews []string
 	for i, tab := range tabs {
@@ -139,15 +143,43 @@ func (m Model) renderHeader() string {
 		}
 		tabViews = append(tabViews, style.Render(tab))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, tabViews...)
+	modeTabs := lipgloss.JoinHorizontal(lipgloss.Top, tabViews...)
+
+	return lipgloss.JoinVertical(lipgloss.Left, sessionBar, modeTabs)
+}
+
+func (m Model) renderSessionTabs() string {
+	if len(m.snapshot.Sessions) == 0 {
+		return common.DimSelectedStyle.Render("⚡ No sessions")
+	}
+
+	var tabs []string
+	tabs = append(tabs, "⚡")
+
+	for i, session := range m.snapshot.Sessions {
+		name := session.Name
+
+		// Add marker if this is the currently attached session
+		if session.Name == m.snapshot.CurrentSession {
+			name = "● " + name
+		}
+
+		style := common.SessionTabStyle
+		if i == m.sessionIndex {
+			style = common.ActiveSessionTabStyle
+		}
+		tabs = append(tabs, style.Render(name))
+	}
+
+	return strings.Join(tabs, " ")
 }
 
 func (m Model) renderFooter() string {
-	keys := []string{"[Tab] focus", "[t] tabs", "[q] quit"}
+	keys := []string{"[←/→] session", "[↑/↓] navigate", "[Tab] focus", "[q] quit"}
 	if m.tab == TabSessions {
-		keys = append([]string{"[Enter] attach", "[a] add", "[r] rename", "[x] close", "[?] help"}, keys...)
+		keys = append([]string{"[Enter] attach", "[a] add", "[r] rename", "[x] close"}, keys...)
 	} else {
-		keys = append([]string{"[Enter] apply", "[?] help"}, keys...)
+		keys = append([]string{"[Enter] apply"}, keys...)
 	}
 	return common.FooterStyle.Render(strings.Join(keys, "  "))
 }

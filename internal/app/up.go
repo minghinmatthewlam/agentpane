@@ -35,9 +35,10 @@ const (
 )
 
 type UpResult struct {
-	Action      UpAction
-	SessionName string
-	Warnings    []string
+	Action          UpAction
+	SessionName     string
+	Warnings        []string
+	KeybindingAdded bool
 }
 
 func (a *App) Up(opts UpOptions) (UpResult, error) {
@@ -83,13 +84,17 @@ func (a *App) Up(opts UpOptions) (UpResult, error) {
 		if err := a.Reconcile(); err != nil {
 			return UpResult{}, err
 		}
+
+		// Ensure dashboard keybinding is installed
+		keybindingAdded, _ := a.EnsureKeybinding()
+
 		if opts.Detach {
-			return UpResult{Action: ActionDetached, SessionName: sessionName, Warnings: warnings}, nil
+			return UpResult{Action: ActionDetached, SessionName: sessionName, Warnings: warnings, KeybindingAdded: keybindingAdded}, nil
 		}
 		if err := a.Attach(sessionName); err != nil {
 			return UpResult{}, err
 		}
-		return UpResult{Action: ActionCreated, SessionName: sessionName, Warnings: warnings}, nil
+		return UpResult{Action: ActionCreated, SessionName: sessionName, Warnings: warnings, KeybindingAdded: keybindingAdded}, nil
 	}
 
 	// Session exists.
