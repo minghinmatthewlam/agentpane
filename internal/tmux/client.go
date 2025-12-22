@@ -158,6 +158,14 @@ func (c *Client) KillPane(paneID string) error {
 	return c.run("kill-pane", "-t", paneID)
 }
 
+func (c *Client) CapturePaneContent(paneID string) (string, error) {
+	out, err := c.runOutput("capture-pane", "-t", paneID, "-p")
+	if err != nil {
+		return "", err
+	}
+	return out, nil
+}
+
 func (c *Client) SendKeysLiteral(paneID, text string) error {
 	return c.run("send-keys", "-t", paneID, "-l", text)
 }
@@ -197,8 +205,27 @@ func (c *Client) SetEnv(name, value string) error {
 	return c.run("set-environment", "-g", name, value)
 }
 
-func (c *Client) DisplayPopup(command string) error {
-	return c.run("display-popup", "-E", "-w", "80%", "-h", "80%", command)
+func (c *Client) SupportsPopup() (bool, error) {
+	out, err := c.runOutput("list-commands")
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(out, "display-popup"), nil
+}
+
+func (c *Client) DisplayPopup(command string, args ...string) error {
+	full := append([]string{"display-popup", "-E", "-w", "80%", "-h", "80%", command}, args...)
+	return c.run(full...)
+}
+
+func (c *Client) OpenWindow(name string, command string) error {
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("window name cannot be empty")
+	}
+	if strings.TrimSpace(command) == "" {
+		return fmt.Errorf("window command cannot be empty")
+	}
+	return c.run("new-window", "-n", name, command)
 }
 
 func (c *Client) run(args ...string) error {

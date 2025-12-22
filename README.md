@@ -56,6 +56,21 @@ This creates a tmux session for the current repo using the default template (Cod
 - `agentpane search` — search sessions/panes
 - `agentpane init` — generate `.agentpane.yml`
 
+### Dashboard keys
+
+- `←/→` or `h/l`: switch session
+- `↑/↓` or `j/k`: navigate
+- `Tab`: switch focus
+- `/`: filter sessions
+- `Enter`: attach / apply template
+- `c`: quick-add Claude pane
+- `x`: quick-add Codex pane
+- `s`: quick-add Shell pane
+- `a`: add pane (dialog)
+- `r`: rename pane
+- `d`: close pane
+- `q`: quit
+
 ## Config
 
 ### Repo config: `.agentpane.yml`

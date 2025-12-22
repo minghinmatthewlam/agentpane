@@ -45,12 +45,24 @@ func (a *App) Attach(name string) error {
 	return a.tmux.AttachSession(name)
 }
 
-func (a *App) OpenPopup(command string) error {
-	return a.tmux.DisplayPopup(command)
+func (a *App) SupportsPopup() (bool, error) {
+	return a.tmux.SupportsPopup()
+}
+
+func (a *App) OpenPopup(command string, args ...string) error {
+	return a.tmux.DisplayPopup(command, args...)
+}
+
+func (a *App) OpenDashboardWindow() error {
+	return a.tmux.OpenWindow("agentpane-dashboard", "agentpane dashboard")
 }
 
 func (a *App) Must(err error) {
 	if err != nil {
 		panic(fmt.Sprintf("agentpane: %v", err))
 	}
+}
+
+func (a *App) CapturePaneContent(paneID string) (string, error) {
+	return a.tmux.CapturePaneContent(paneID)
 }

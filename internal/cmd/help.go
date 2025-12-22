@@ -32,12 +32,16 @@ Reload config with: tmux source-file ~/.tmux.conf
 
 DASHBOARD KEYS:
   ←/→, h/l    Switch between sessions (repos)
-  ↑/↓, j/k    Navigate panes
+  ↑/↓, j/k    Navigate
   Tab         Switch panels
+  /           Filter sessions
   Enter       Attach to session
-  a           Add pane
+  c           Add Claude pane
+  x           Add Codex pane
+  s           Add Shell pane
+  a           Add pane (dialog)
   r           Rename pane
-  x           Close pane
+  d           Close pane
   t           Switch tabs (Sessions/Templates)
   q           Quit
 `)

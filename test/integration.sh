@@ -19,6 +19,7 @@ go build -o "$ROOT/agentpane" "$ROOT/cmd/agentpane"
 
 cd "$REPO"
 HOME="$HOME_DIR" AGENTPANE_TMUX_SOCKET="$SOCK" "$ROOT/agentpane" up --detach
+HOME="$HOME_DIR" AGENTPANE_TMUX_SOCKET="$SOCK" "$ROOT/agentpane" popup --help >/dev/null
 
 tmux -L "$SOCK" has-session -t repo
 
@@ -43,4 +44,3 @@ TITLE=$(tmux -L "$SOCK" display -p -t repo:0.0 '#{pane_title}')
 [ "$TITLE" = "codex-1" ] || (echo "expected title codex-1 after restart, got $TITLE" && exit 1)
 
 echo "Integration tests passed"
-
