@@ -44,20 +44,7 @@ func (a *App) Up(opts UpOptions) (UpResult, error) {
 		return UpResult{}, err
 	}
 
-	a.providers = provider.NewRegistry()
-	for k, v := range loaded.Merged.Providers {
-		if v.Command == "" {
-			continue
-		}
-		switch k {
-		case "codex":
-			a.providers.Override(domain.PaneCodex, v.Command)
-		case "claude":
-			a.providers.Override(domain.PaneClaude, v.Command)
-		case "shell":
-			a.providers.Override(domain.PaneShell, v.Command)
-		}
-	}
+	a.applyProviderOverrides(loaded.Merged)
 
 	baseOverride := ""
 	if opts.ExplicitName == "" && loaded.Repo != nil && strings.TrimSpace(loaded.Repo.Session) != "" {
@@ -91,6 +78,9 @@ func (a *App) Up(opts UpOptions) (UpResult, error) {
 		if err != nil {
 			return UpResult{}, err
 		}
+		if err := a.Reconcile(); err != nil {
+			return UpResult{}, err
+		}
 		if opts.Detach {
 			return UpResult{Action: ActionDetached, SessionName: sessionName, Warnings: warnings}, nil
 		}
@@ -101,6 +91,9 @@ func (a *App) Up(opts UpOptions) (UpResult, error) {
 	}
 
 	// Session exists.
+	if err := a.Reconcile(); err != nil {
+		return UpResult{}, err
+	}
 	if opts.Detach {
 		return UpResult{Action: ActionDetached, SessionName: sessionName}, nil
 	}

@@ -166,6 +166,29 @@ func (c *Client) SetOption(session, option, value string) error {
 	return c.run("set-option", "-t", session, option, value)
 }
 
+func (c *Client) GetEnv(name string) (string, bool, error) {
+	out, err := c.runOutput("show-environment", "-g", name)
+	if err != nil {
+		if exitCode(err) == 1 {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return "", false, nil
+	}
+	parts := strings.SplitN(out, "=", 2)
+	if len(parts) != 2 {
+		return "", false, nil
+	}
+	return parts[1], true, nil
+}
+
+func (c *Client) SetEnv(name, value string) error {
+	return c.run("set-environment", "-g", name, value)
+}
+
 func (c *Client) run(args ...string) error {
 	_, err := c.runOutput(args...)
 	return err
