@@ -195,13 +195,10 @@ func (c *Client) run(args ...string) error {
 }
 
 func (c *Client) runInteractive(args ...string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	fullArgs := append([]string{}, c.baseArgs...)
 	fullArgs = append(fullArgs, args...)
 
-	cmd := exec.CommandContext(ctx, c.tmuxPath, fullArgs...)
+	cmd := exec.Command(c.tmuxPath, fullArgs...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
