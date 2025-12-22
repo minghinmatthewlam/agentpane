@@ -268,8 +268,13 @@ func (c *Client) SupportsPopup() (bool, error) {
 }
 
 func (c *Client) DisplayPopup(command string, args ...string) error {
-	full := append([]string{"display-popup", "-E", "-w", "80%", "-h", "80%", command}, args...)
-	return c.run(full...)
+	// Join command and args into a single shell command string
+	// because display-popup expects the shell command as one argument
+	shellCmd := command
+	if len(args) > 0 {
+		shellCmd = command + " " + strings.Join(args, " ")
+	}
+	return c.run("display-popup", "-E", "-w", "80%", "-h", "80%", shellCmd)
 }
 
 func (c *Client) OpenWindow(name string, command string) error {

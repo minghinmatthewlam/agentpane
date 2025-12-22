@@ -33,7 +33,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case snapshotMsg:
 		m.snapshot = msg.snapshot
 		m.errorMsg = ""
-		return m, m.scheduleRefresh()
+		// Capture pane content for preview
+		cmds := []tea.Cmd{m.scheduleRefresh()}
+		if capCmd := m.capturePaneContent(); capCmd != nil {
+			cmds = append(cmds, capCmd)
+		}
+		return m, tea.Batch(cmds...)
+	case capturedContentMsg:
+		m.capturedContent = msg.content
+		return m, nil
 	case errMsg:
 		m.errorMsg = msg.err.Error()
 		return m, m.scheduleRefresh()
@@ -47,79 +55,97 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+type capturedContentMsg struct {
+	content map[string]string
+}
+
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "esc":
 		return m, tea.Quit
-	case "t":
+	case "tab":
+		// Tab switches between Sessions and Templates tabs
 		if m.tab == TabSessions {
 			m.tab = TabTemplates
 			m.focus = FocusLeft
 		} else {
 			m.tab = TabSessions
-			m.focus = FocusLeft
-		}
-		return m, nil
-	case "tab":
-		if m.focus == FocusLeft {
-			m.focus = FocusRight
-		} else {
-			m.focus = FocusLeft
 		}
 		return m, nil
 	case "left", "h":
-		// Move to previous session tab
-		if m.sessionIndex > 0 {
-			m.sessionIndex--
-			m.paneIndex = 0
+		// Jump to previous session in tree
+		if m.tab == TabSessions {
+			tree := m.buildTree()
+			// Find current session and jump to previous one
+			for i := m.treeIndex - 1; i >= 0; i-- {
+				if tree[i].Type == ItemSession {
+					m.treeIndex = i
+					break
+				}
+			}
 		}
 		return m, nil
 	case "right", "l":
-		// Move to next session tab
-		filtered := m.filteredSessions()
-		if m.sessionIndex < len(filtered)-1 {
-			m.sessionIndex++
-			m.paneIndex = 0
+		// Jump to next session in tree
+		if m.tab == TabSessions {
+			tree := m.buildTree()
+			// Find next session
+			for i := m.treeIndex + 1; i < len(tree); i++ {
+				if tree[i].Type == ItemSession {
+					m.treeIndex = i
+					break
+				}
+			}
 		}
 		return m, nil
-	case "up", "k":
-		if m.focus == FocusLeft {
-			if m.tab == TabTemplates {
+	case "up":
+		if m.tab == TabTemplates {
+			if m.focus == FocusLeft {
 				if m.templateIndex > 0 {
 					m.templateIndex--
 				}
-			} else if m.sessionIndex > 0 {
-				m.sessionIndex--
-				m.paneIndex = 0
 			}
-		} else if m.paneIndex > 0 {
-			m.paneIndex--
+		} else {
+			// Sessions tab - navigate tree
+			if m.treeIndex > 0 {
+				m.treeIndex--
+			}
 		}
 		return m, nil
-	case "down", "j":
-		if m.focus == FocusLeft {
-			if m.tab == TabTemplates {
+	case "down":
+		if m.tab == TabTemplates {
+			if m.focus == FocusLeft {
 				if m.templateIndex < len(m.templates)-1 {
 					m.templateIndex++
 				}
-			} else {
-				filtered := m.filteredSessions()
-				if m.sessionIndex < len(filtered)-1 {
-					m.sessionIndex++
-					m.paneIndex = 0
-				}
 			}
 		} else {
-			session := m.selectedSession()
-			if session != nil && m.paneIndex < len(session.Panes)-1 {
-				m.paneIndex++
+			// Sessions tab - navigate tree
+			tree := m.buildTree()
+			if m.treeIndex < len(tree)-1 {
+				m.treeIndex++
+			}
+		}
+		return m, nil
+	case "k":
+		// Kill session (when cursor is on a session)
+		if m.tab == TabSessions {
+			item := m.selectedTreeItem()
+			if item != nil && item.Type == ItemSession {
+				m.confirmAction = confirmKillSession
+				m.confirmSession = item.Session
+				m.dialog = dialogs.NewConfirm(
+					"Kill session?",
+					fmt.Sprintf("This will kill session '%s' and all its panes.", item.Session),
+				)
 			}
 		}
 		return m, nil
 	case "enter":
 		if m.tab == TabSessions {
-			if m.focus == FocusLeft && m.selectedSession() != nil {
-				return m, m.attachToSession(m.selectedSession().Name)
+			if session := m.selectedSession(); session != nil {
+				m.attachSession = session.Name
+				return m, tea.Quit
 			}
 		} else if m.tab == TabTemplates {
 			if tmpl := m.selectedTemplate(); tmpl != nil {
@@ -143,6 +169,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.dialog = dialogs.NewAddPane()
 		return m, nil
 	case "r":
+		// Rename only works when cursor is on a pane
 		if pane := m.selectedPane(); pane != nil {
 			session := m.selectedSession()
 			if session != nil {
@@ -150,7 +177,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.renamePaneID = pane.ID
 				m.dialog = dialogs.NewRename(pane.Title)
 			}
-			return m, nil
 		}
 		return m, nil
 	case "c":
@@ -166,7 +192,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.addPaneType = domain.PaneShell
 		return m, tea.Quit
 	case "d":
-		// Delete/close pane
+		// Delete/close pane - only works when cursor is on a pane
 		if pane := m.selectedPane(); pane != nil {
 			m.confirmAction = confirmClosePane
 			m.confirmPaneID = pane.ID
@@ -174,8 +200,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				"Close pane?",
 				"This will kill the pane and any running processes.",
 			)
-			return m, nil
 		}
+		return m, nil
+	case "o":
+		// Open new session
+		m.dialog = dialogs.NewOpenSession()
 		return m, nil
 	case "?":
 		m.dialog = dialogs.NewHelp()
@@ -201,10 +230,10 @@ func (m Model) handleFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.filterActive = false
 			m.filterInput.Blur()
-			// Reset session index to stay within filtered bounds
-			filtered := m.filteredSessions()
-			if m.sessionIndex >= len(filtered) {
-				m.sessionIndex = 0
+			// Reset tree index to stay within bounds
+			tree := m.buildTree()
+			if m.treeIndex >= len(tree) {
+				m.treeIndex = 0
 			}
 			return m, nil
 		}
@@ -237,23 +266,57 @@ func (m Model) filteredSessions() []domain.Session {
 	return filtered
 }
 
-func (m Model) selectedSession() *domain.Session {
+// buildTree creates a flattened tree of sessions and their panes
+func (m Model) buildTree() []TreeItem {
 	filtered := m.filteredSessions()
-	if m.sessionIndex < len(filtered) {
-		return &filtered[m.sessionIndex]
+	var items []TreeItem
+	for _, session := range filtered {
+		items = append(items, TreeItem{
+			Type:    ItemSession,
+			Session: session.Name,
+		})
+		for i := range session.Panes {
+			items = append(items, TreeItem{
+				Type:    ItemPane,
+				Session: session.Name,
+				Pane:    &session.Panes[i],
+			})
+		}
+	}
+	return items
+}
+
+// selectedTreeItem returns the currently selected tree item
+func (m Model) selectedTreeItem() *TreeItem {
+	tree := m.buildTree()
+	if m.treeIndex >= 0 && m.treeIndex < len(tree) {
+		return &tree[m.treeIndex]
 	}
 	return nil
 }
 
-func (m Model) selectedPane() *domain.Pane {
-	session := m.selectedSession()
-	if session == nil {
+// selectedSession returns the session containing the current tree cursor
+func (m Model) selectedSession() *domain.Session {
+	item := m.selectedTreeItem()
+	if item == nil {
 		return nil
 	}
-	if m.paneIndex < len(session.Panes) {
-		return &session.Panes[m.paneIndex]
+	// Find the session by name
+	for i := range m.snapshot.Sessions {
+		if m.snapshot.Sessions[i].Name == item.Session {
+			return &m.snapshot.Sessions[i]
+		}
 	}
 	return nil
+}
+
+// selectedPane returns the pane if the cursor is on a pane item
+func (m Model) selectedPane() *domain.Pane {
+	item := m.selectedTreeItem()
+	if item == nil || item.Type != ItemPane {
+		return nil
+	}
+	return item.Pane
 }
 
 func (m Model) selectedTemplate() *app.TemplateSummary {
@@ -274,16 +337,6 @@ func (m Model) selectedSessionName() string {
 		return s.Name
 	}
 	return ""
-}
-
-func (m Model) attachToSession(name string) tea.Cmd {
-	return tea.Sequence(
-		tea.ExitAltScreen,
-		func() tea.Msg {
-			_ = m.app.Attach(name)
-			return tea.Quit()
-		},
-	)
 }
 
 func (m Model) scheduleRefresh() tea.Cmd {
@@ -340,6 +393,18 @@ func (m Model) updateDialog(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renamePaneID = ""
 		m.statusMsg = "pane renamed"
 		return m, m.refreshSnapshot()
+	case dialogs.OpenSessionResult:
+		m.dialog = nil
+		if msg.Cancelled {
+			return m, nil
+		}
+		if strings.TrimSpace(msg.Path) == "" {
+			m.errorMsg = "path cannot be empty"
+			return m, nil
+		}
+		// Store the path and quit - session will be created after dashboard exits
+		m.openSessionPath = msg.Path
+		return m, tea.Quit
 	case dialogs.ConfirmResult:
 		m.dialog = nil
 		if !msg.Accepted {
@@ -368,7 +433,18 @@ func (m Model) updateDialog(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Auto-attach to the session after applying template
 			m.confirmAction = confirmNone
-			return m, m.attachToSession(m.confirmSession)
+			m.attachSession = m.confirmSession
+			return m, tea.Quit
+		case confirmKillSession:
+			if err := m.app.KillSession(m.confirmSession); err != nil {
+				m.errorMsg = err.Error()
+				m.confirmAction = confirmNone
+				return m, nil
+			}
+			m.statusMsg = fmt.Sprintf("session '%s' killed", m.confirmSession)
+			m.confirmAction = confirmNone
+			m.treeIndex = 0 // Reset to first item
+			return m, m.refreshSnapshot()
 		default:
 			m.confirmAction = confirmNone
 		}
@@ -378,4 +454,23 @@ func (m Model) updateDialog(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, cmd
+}
+
+// capturePaneContent captures content from panes in the selected session
+func (m Model) capturePaneContent() tea.Cmd {
+	session := m.selectedSession()
+	if session == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		content := make(map[string]string)
+		for _, pane := range session.Panes {
+			captured, err := m.app.CapturePaneContent(pane.ID)
+			if err == nil {
+				content[pane.ID] = captured
+			}
+		}
+		return capturedContentMsg{content: content}
+	}
 }

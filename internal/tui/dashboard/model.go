@@ -28,6 +28,7 @@ const (
 	confirmNone confirmAction = iota
 	confirmClosePane
 	confirmApplyTemplate
+	confirmKillSession
 )
 
 const (
@@ -35,15 +36,29 @@ const (
 	minHeight = 20
 )
 
+// TreeItemType distinguishes between session and pane items in the tree
+type TreeItemType int
+
+const (
+	ItemSession TreeItemType = iota
+	ItemPane
+)
+
+// TreeItem represents an item in the session/pane tree
+type TreeItem struct {
+	Type    TreeItemType
+	Session string       // session name
+	Pane    *domain.Pane // nil for session items
+}
+
 type Model struct {
 	app *app.App
 
 	snapshot domain.Snapshot
 
 	tab           Tab
-	focus         Focus
-	sessionIndex  int
-	paneIndex     int
+	focus         Focus // used for Templates tab
+	treeIndex     int   // cursor position in flattened tree (Sessions tab)
 	templateIndex int
 	width         int
 	height        int
@@ -69,14 +84,33 @@ type Model struct {
 	// addPaneType is set when user presses c/x/s to quick-add a pane
 	addPaneType domain.PaneType
 
+	// attachSession is set when user wants to attach to a session after exit
+	attachSession string
+
+	// openSessionPath is set when user wants to open a new session at a path
+	openSessionPath string
+
 	// Session filtering
 	filterInput  textinput.Model
 	filterActive bool
+
+	// Captured pane content for preview
+	capturedContent map[string]string // paneID -> content
 }
 
 // AddPaneType returns the pane type to add after dashboard exits (empty if none)
 func (m Model) AddPaneType() domain.PaneType {
 	return m.addPaneType
+}
+
+// AttachSession returns the session name to attach to after dashboard exits (empty if none)
+func (m Model) AttachSession() string {
+	return m.attachSession
+}
+
+// OpenSessionPath returns the path to open a new session at after dashboard exits (empty if none)
+func (m Model) OpenSessionPath() string {
+	return m.openSessionPath
 }
 
 func NewModel(a *app.App) Model {
@@ -86,10 +120,11 @@ func NewModel(a *app.App) Model {
 	ti.Width = 20
 
 	return Model{
-		app:         a,
-		tab:         TabSessions,
-		focus:       FocusLeft,
-		filterInput: ti,
+		app:             a,
+		tab:             TabSessions,
+		focus:           FocusLeft,
+		filterInput:     ti,
+		capturedContent: make(map[string]string),
 	}
 }
 

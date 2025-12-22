@@ -43,6 +43,21 @@ func runDashboard(a *app.App) error {
 		return nil
 	}
 
+	// Check if user requested to attach to a session
+	if sessionName := m.AttachSession(); sessionName != "" {
+		return a.Attach(sessionName)
+	}
+
+	// Check if user requested to open a new session
+	if path := m.OpenSessionPath(); path != "" {
+		result, err := a.Up(app.UpOptions{Cwd: path})
+		if err != nil {
+			return fmt.Errorf("failed to open session: %w", err)
+		}
+		fmt.Printf("Session '%s' %s\n", result.SessionName, result.Action)
+		return nil
+	}
+
 	// Check if user requested to add a pane
 	if paneType := m.AddPaneType(); paneType != "" {
 		result, err := a.Add(app.AddOptions{Type: paneType})

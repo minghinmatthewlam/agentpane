@@ -9,6 +9,10 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "agentpane",
 		Short: "tmux-based AI coding agent manager",
+		// Default to dashboard when no subcommand given
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runDashboard(a)
+		},
 	}
 
 	root.AddCommand(NewUpCmd(a))

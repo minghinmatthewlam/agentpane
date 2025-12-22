@@ -39,8 +39,8 @@ func (m Model) renderDashboard() string {
 		leftPanel = m.renderTemplatesList()
 		rightPanel = m.renderTemplatePreview()
 	} else {
-		leftPanel = m.renderSessionsList()
-		rightPanel = m.renderPanesList()
+		leftPanel = m.renderTree()
+		rightPanel = m.renderPanePreview()
 	}
 
 	leftWidth := m.width / 3
@@ -59,7 +59,7 @@ func (m Model) renderDashboard() string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, content, footer)
 }
 
-func (m Model) renderSessionsList() string {
+func (m Model) renderTree() string {
 	var b strings.Builder
 	b.WriteString(common.TitleStyle.Render("Sessions"))
 	b.WriteString("\n\n")
@@ -75,8 +75,8 @@ func (m Model) renderSessionsList() string {
 		b.WriteString("\n\n")
 	}
 
-	filtered := m.filteredSessions()
-	if len(filtered) == 0 {
+	tree := m.buildTree()
+	if len(tree) == 0 {
 		if filterValue != "" {
 			b.WriteString(common.DimSelectedStyle.Render("No matching sessions"))
 		} else {
@@ -86,72 +86,133 @@ func (m Model) renderSessionsList() string {
 		return b.String()
 	}
 
-	for i, session := range filtered {
+	for i, item := range tree {
 		cursor := "  "
 		style := common.NormalStyle
-		if i == m.sessionIndex {
+		if i == m.treeIndex {
 			cursor = "→ "
-			if m.focus == FocusLeft {
-				style = common.SelectedStyle
-			} else {
-				style = common.DimSelectedStyle
+			style = common.SelectedStyle
+		}
+
+		if item.Type == ItemSession {
+			// Session row
+			indicator := "○"
+			// Check if any pane in this session is active
+			for j := range m.snapshot.Sessions {
+				if m.snapshot.Sessions[j].Name == item.Session {
+					if sessionHasActive(m.snapshot.Sessions[j]) {
+						indicator = "●"
+					}
+					break
+				}
 			}
-		}
 
-		indicator := "○"
-		if sessionHasActive(session) {
-			indicator = "●"
-		}
+			// Mark current session
+			name := item.Session
+			if item.Session == m.snapshot.CurrentSession {
+				name = "● " + name
+			}
 
-		line := fmt.Sprintf("%s%s %s (%d panes)",
-			cursor, indicator, session.Name, len(session.Panes))
-		b.WriteString(style.Render(line))
+			line := fmt.Sprintf("%s%s %s", cursor, indicator, name)
+			b.WriteString(style.Render(line))
+		} else {
+			// Pane row (indented)
+			pane := item.Pane
+			indicator := "○"
+			if pane.Status == domain.StatusActive {
+				indicator = "●"
+			} else if pane.Status == domain.StatusUnknown {
+				indicator = "?"
+			}
+
+			typeBadge := fmt.Sprintf("[%s]", pane.Type)
+			line := fmt.Sprintf("%s    %s %s %s", cursor, indicator, pane.Title, typeBadge)
+			b.WriteString(style.Render(line))
+		}
 		b.WriteString("\n")
 	}
 
 	// Show count if filtered
-	if filterValue != "" && len(filtered) != len(m.snapshot.Sessions) {
+	if filterValue != "" && len(m.filteredSessions()) != len(m.snapshot.Sessions) {
 		b.WriteString("\n")
-		b.WriteString(common.DimSelectedStyle.Render(fmt.Sprintf("showing %d of %d", len(filtered), len(m.snapshot.Sessions))))
+		b.WriteString(common.DimSelectedStyle.Render(fmt.Sprintf("showing %d of %d sessions", len(m.filteredSessions()), len(m.snapshot.Sessions))))
 	}
 
 	return b.String()
 }
 
-func (m Model) renderPanesList() string {
-	var b strings.Builder
-
+func (m Model) renderPanePreview() string {
 	session := m.selectedSession()
 	if session == nil {
-		return "No session selected"
+		return common.DimSelectedStyle.Render("Select a session to preview panes")
 	}
 
-	b.WriteString(common.TitleStyle.Render(fmt.Sprintf("Panes in %s", session.Name)))
+	var b strings.Builder
+	b.WriteString(common.TitleStyle.Render(fmt.Sprintf("Preview: %s", session.Name)))
 	b.WriteString("\n\n")
 
-	for i, pane := range session.Panes {
-		cursor := "  "
-		style := common.NormalStyle
-		if i == m.paneIndex {
-			cursor = "→ "
-			if m.focus == FocusRight {
-				style = common.SelectedStyle
-			} else {
-				style = common.DimSelectedStyle
-			}
-		}
+	if len(session.Panes) == 0 {
+		b.WriteString(common.DimSelectedStyle.Render("No panes in this session"))
+		return b.String()
+	}
 
+	// Calculate height per pane (divide available height among panes)
+	// Reserve some lines for header and spacing
+	availableHeight := m.height - 10
+	if availableHeight < 5 {
+		availableHeight = 5
+	}
+	linesPerPane := availableHeight / len(session.Panes)
+	if linesPerPane < 3 {
+		linesPerPane = 3
+	}
+	if linesPerPane > 15 {
+		linesPerPane = 15
+	}
+
+	paneStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Padding(0, 1)
+
+	for _, pane := range session.Panes {
+		// Pane header
 		indicator := "○"
 		if pane.Status == domain.StatusActive {
 			indicator = "●"
-		} else if pane.Status == domain.StatusUnknown {
-			indicator = "?"
+		}
+		header := fmt.Sprintf("%s %s [%s]", indicator, pane.Title, pane.Type)
+		b.WriteString(common.DimSelectedStyle.Render(header))
+		b.WriteString("\n")
+
+		// Pane content
+		content := m.capturedContent[pane.ID]
+		if content == "" {
+			content = "(no content)"
 		}
 
-		typeBadge := fmt.Sprintf("[%s]", pane.Type)
-		line := fmt.Sprintf("%s%-20s %s %s", cursor, pane.Title, typeBadge, indicator)
-		b.WriteString(style.Render(line))
-		b.WriteString("\n")
+		// Truncate content to fit
+		lines := strings.Split(content, "\n")
+		maxLines := linesPerPane - 2 // Account for header and border
+		if maxLines < 1 {
+			maxLines = 1
+		}
+		if len(lines) > maxLines {
+			lines = lines[len(lines)-maxLines:] // Show last N lines
+		}
+
+		// Trim trailing empty lines
+		for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+			lines = lines[:len(lines)-1]
+		}
+
+		previewContent := strings.Join(lines, "\n")
+		if previewContent == "" {
+			previewContent = "(empty)"
+		}
+
+		b.WriteString(paneStyle.Render(previewContent))
+		b.WriteString("\n\n")
 	}
 
 	return b.String()
@@ -182,10 +243,17 @@ func (m Model) renderSessionTabs() string {
 		return common.DimSelectedStyle.Render("⚡ No sessions")
 	}
 
+	// Get currently selected session from tree
+	selectedSession := m.selectedSession()
+	var selectedName string
+	if selectedSession != nil {
+		selectedName = selectedSession.Name
+	}
+
 	var tabs []string
 	tabs = append(tabs, "⚡")
 
-	for i, session := range filtered {
+	for _, session := range filtered {
 		name := session.Name
 
 		// Add marker if this is the currently attached session
@@ -194,7 +262,7 @@ func (m Model) renderSessionTabs() string {
 		}
 
 		style := common.SessionTabStyle
-		if i == m.sessionIndex {
+		if session.Name == selectedName {
 			style = common.ActiveSessionTabStyle
 		}
 		tabs = append(tabs, style.Render(name))
@@ -204,11 +272,11 @@ func (m Model) renderSessionTabs() string {
 }
 
 func (m Model) renderFooter() string {
-	keys := []string{"[←/→] session", "[↑/↓] navigate", "[Tab] focus", "[q] quit"}
+	var keys []string
 	if m.tab == TabSessions {
-		keys = append([]string{"[Enter] attach", "[c] claude", "[x] codex", "[s] shell", "[r] rename", "[d] close", "[/] filter"}, keys...)
+		keys = []string{"[Enter] attach", "[o] open", "[c] claude", "[x] codex", "[s] shell", "[k] kill", "[/] filter", "[Tab] templates", "[q] quit"}
 	} else {
-		keys = append([]string{"[Enter] apply"}, keys...)
+		keys = []string{"[Enter] apply", "[Tab] sessions", "[q] quit"}
 	}
 	return common.FooterStyle.Render(strings.Join(keys, "  "))
 }

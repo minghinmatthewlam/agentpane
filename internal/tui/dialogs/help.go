@@ -23,17 +23,18 @@ func (m HelpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m HelpModel) View() string {
 	content := `Keys:
-  ←/→         Switch session
-  ↑/k, ↓/j    Navigate
-  Tab         Focus panel
-  t           Switch tab
-  Enter       Attach / Apply
+  ↑/↓         Navigate tree
+  ←/→         Jump between sessions
+  Tab         Switch tab (Sessions/Templates)
+  Enter       Attach to session
+  o           Open new session
   c           Add Claude pane
   x           Add Codex pane
   s           Add Shell pane
   a           Add pane (dialog)
-  r           Rename pane
-  d           Close pane
+  r           Rename pane (when on pane)
+  d           Close pane (when on pane)
+  k           Kill session (when on session)
   /           Filter sessions
   ?           Help
   q           Quit`
