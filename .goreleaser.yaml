@@ -28,7 +28,7 @@ checksum:
 
 brews:
   - name: agentpane
-    tap:
+    repository:
       owner: minghinmatthewlam
       name: homebrew-tap
     homepage: https://github.com/minghinmatthewlam/agentpane
@@ -38,3 +38,4 @@ brews:
       bin.install "agentpane"
     test: |
       system "#{bin}/agentpane", "--help"
+    skip_upload: true
