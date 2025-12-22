@@ -157,22 +157,22 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 	}
 
 	// Configure first pane in-place, then split for the rest.
-	w, err := a.configurePaneSpec(firstPaneID, panes[0], typeCounts)
+	firstRes, err := a.configurePaneSpec(firstPaneID, panes[0], typeCounts)
 	if err != nil {
 		return nil, err
 	}
-	warnings = append(warnings, w...)
+	warnings = append(warnings, firstRes.Warnings...)
 
 	for i := 1; i < len(panes); i++ {
 		newPaneID, err := a.tmux.SplitPane(name, cwd)
 		if err != nil {
 			return nil, err
 		}
-		w, err := a.configurePaneSpec(newPaneID, panes[i], typeCounts)
+		res, err := a.configurePaneSpec(newPaneID, panes[i], typeCounts)
 		if err != nil {
 			return nil, err
 		}
-		warnings = append(warnings, w...)
+		warnings = append(warnings, res.Warnings...)
 	}
 
 	_ = a.tmux.SelectLayout(name, "tiled")
@@ -190,15 +190,21 @@ func (a *App) launchProvider(paneID string, prov *provider.Provider) error {
 	return a.tmux.SendEnter(paneID)
 }
 
-func (a *App) configurePaneSpec(paneID string, spec config.PaneSpec, typeCounts map[domain.PaneType]int) ([]string, error) {
+type paneConfigResult struct {
+	Type     domain.PaneType
+	Title    string
+	Warnings []string
+}
+
+func (a *App) configurePaneSpec(paneID string, spec config.PaneSpec, typeCounts map[domain.PaneType]int) (paneConfigResult, error) {
 	desired, err := parsePaneType(spec.Type)
 	if err != nil {
-		return nil, err
+		return paneConfigResult{}, err
 	}
 
 	prov, actualType, ok := a.providers.GetWithFallback(desired)
 	if !ok {
-		return nil, fmt.Errorf("unknown provider type: %s", desired)
+		return paneConfigResult{}, fmt.Errorf("unknown provider type: %s", desired)
 	}
 
 	var warnings []string
@@ -213,12 +219,16 @@ func (a *App) configurePaneSpec(paneID string, spec config.PaneSpec, typeCounts 
 	}
 
 	if err := a.tmux.SetPaneTitle(paneID, title); err != nil {
-		return nil, err
+		return paneConfigResult{}, err
 	}
 	if err := a.launchProvider(paneID, prov); err != nil {
-		return nil, err
+		return paneConfigResult{}, err
 	}
-	return warnings, nil
+	return paneConfigResult{
+		Type:     actualType,
+		Title:    title,
+		Warnings: warnings,
+	}, nil
 }
 
 func parsePaneType(s string) (domain.PaneType, error) {
