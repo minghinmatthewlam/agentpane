@@ -17,6 +17,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateDialog(msg)
 	}
 
+	// Handle filter input when active
+	if m.filterActive {
+		return m.handleFilterInput(msg)
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -71,7 +76,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "right", "l":
 		// Move to next session tab
-		if m.sessionIndex < len(m.snapshot.Sessions)-1 {
+		filtered := m.filteredSessions()
+		if m.sessionIndex < len(filtered)-1 {
 			m.sessionIndex++
 			m.paneIndex = 0
 		}
@@ -96,9 +102,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if m.templateIndex < len(m.templates)-1 {
 					m.templateIndex++
 				}
-			} else if m.sessionIndex < len(m.snapshot.Sessions)-1 {
-				m.sessionIndex++
-				m.paneIndex = 0
+			} else {
+				filtered := m.filteredSessions()
+				if m.sessionIndex < len(filtered)-1 {
+					m.sessionIndex++
+					m.paneIndex = 0
+				}
 			}
 		} else {
 			session := m.selectedSession()
@@ -135,11 +144,29 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "r":
 		if pane := m.selectedPane(); pane != nil {
-			m.dialog = dialogs.NewRename(pane.Title)
+			session := m.selectedSession()
+			if session != nil {
+				m.renameSession = session.Name
+				m.renamePaneID = pane.ID
+				m.dialog = dialogs.NewRename(pane.Title)
+			}
 			return m, nil
 		}
 		return m, nil
+	case "c":
+		// Quick-add Claude pane
+		m.addPaneType = domain.PaneClaude
+		return m, tea.Quit
 	case "x":
+		// Quick-add Codex pane
+		m.addPaneType = domain.PaneCodex
+		return m, tea.Quit
+	case "s":
+		// Quick-add Shell pane
+		m.addPaneType = domain.PaneShell
+		return m, tea.Quit
+	case "d":
+		// Delete/close pane
 		if pane := m.selectedPane(); pane != nil {
 			m.confirmAction = confirmClosePane
 			m.confirmPaneID = pane.ID
@@ -153,14 +180,67 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		m.dialog = dialogs.NewHelp()
 		return m, nil
+	case "/":
+		// Activate session filter
+		m.filterActive = true
+		m.filterInput.Focus()
+		return m, nil
 	}
 
 	return m, nil
 }
 
+func (m Model) handleFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter", "esc":
+			// Close filter, keep the filter text (enter) or clear it (esc)
+			if msg.String() == "esc" {
+				m.filterInput.SetValue("")
+			}
+			m.filterActive = false
+			m.filterInput.Blur()
+			// Reset session index to stay within filtered bounds
+			filtered := m.filteredSessions()
+			if m.sessionIndex >= len(filtered) {
+				m.sessionIndex = 0
+			}
+			return m, nil
+		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.tooNarrow = msg.Width < minWidth || msg.Height < minHeight
+		return m, nil
+	}
+
+	// Forward to text input
+	var cmd tea.Cmd
+	m.filterInput, cmd = m.filterInput.Update(msg)
+	return m, cmd
+}
+
+// filteredSessions returns sessions matching the current filter
+func (m Model) filteredSessions() []domain.Session {
+	filter := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
+	if filter == "" {
+		return m.snapshot.Sessions
+	}
+
+	var filtered []domain.Session
+	for _, s := range m.snapshot.Sessions {
+		if strings.Contains(strings.ToLower(s.Name), filter) {
+			filtered = append(filtered, s)
+		}
+	}
+	return filtered
+}
+
 func (m Model) selectedSession() *domain.Session {
-	if m.sessionIndex < len(m.snapshot.Sessions) {
-		return &m.snapshot.Sessions[m.sessionIndex]
+	filtered := m.filteredSessions()
+	if m.sessionIndex < len(filtered) {
+		return &filtered[m.sessionIndex]
 	}
 	return nil
 }
@@ -240,16 +320,24 @@ func (m Model) updateDialog(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dialogs.RenameResult:
 		m.dialog = nil
 		if msg.Cancelled {
+			m.renameSession = ""
+			m.renamePaneID = ""
 			return m, nil
 		}
 		if strings.TrimSpace(msg.Title) == "" {
 			m.errorMsg = "title cannot be empty"
 			return m, nil
 		}
-		if _, err := m.app.Rename(app.RenameOptions{Title: msg.Title}); err != nil {
+		if _, err := m.app.Rename(app.RenameOptions{
+			Title:   msg.Title,
+			Session: m.renameSession,
+			PaneID:  m.renamePaneID,
+		}); err != nil {
 			m.errorMsg = err.Error()
 			return m, nil
 		}
+		m.renameSession = ""
+		m.renamePaneID = ""
 		m.statusMsg = "pane renamed"
 		return m, m.refreshSnapshot()
 	case dialogs.ConfirmResult:
@@ -275,11 +363,12 @@ func (m Model) updateDialog(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			if err != nil {
 				m.errorMsg = err.Error()
+				m.confirmAction = confirmNone
 				return m, nil
 			}
-			m.statusMsg = "template applied"
+			// Auto-attach to the session after applying template
 			m.confirmAction = confirmNone
-			return m, m.refreshSnapshot()
+			return m, m.attachToSession(m.confirmSession)
 		default:
 			m.confirmAction = confirmNone
 		}

@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/minghinmatthewlam/agentpane/internal/app"
@@ -60,13 +61,35 @@ type Model struct {
 	confirmSession  string
 	confirmPaneID   string
 	confirmTemplate string
+
+	// renameSession/renamePaneID track which pane to rename
+	renameSession string
+	renamePaneID  string
+
+	// addPaneType is set when user presses c/x/s to quick-add a pane
+	addPaneType domain.PaneType
+
+	// Session filtering
+	filterInput  textinput.Model
+	filterActive bool
+}
+
+// AddPaneType returns the pane type to add after dashboard exits (empty if none)
+func (m Model) AddPaneType() domain.PaneType {
+	return m.addPaneType
 }
 
 func NewModel(a *app.App) Model {
+	ti := textinput.New()
+	ti.Placeholder = "filter sessions..."
+	ti.CharLimit = 50
+	ti.Width = 20
+
 	return Model{
-		app:   a,
-		tab:   TabSessions,
-		focus: FocusLeft,
+		app:         a,
+		tab:         TabSessions,
+		focus:       FocusLeft,
+		filterInput: ti,
 	}
 }
 

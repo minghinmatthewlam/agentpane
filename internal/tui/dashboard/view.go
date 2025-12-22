@@ -64,7 +64,29 @@ func (m Model) renderSessionsList() string {
 	b.WriteString(common.TitleStyle.Render("Sessions"))
 	b.WriteString("\n\n")
 
-	for i, session := range m.snapshot.Sessions {
+	// Show filter input if active or has value
+	filterValue := strings.TrimSpace(m.filterInput.Value())
+	if m.filterActive || filterValue != "" {
+		if m.filterActive {
+			b.WriteString("Filter: " + m.filterInput.View())
+		} else {
+			b.WriteString(common.DimSelectedStyle.Render("Filter: " + filterValue))
+		}
+		b.WriteString("\n\n")
+	}
+
+	filtered := m.filteredSessions()
+	if len(filtered) == 0 {
+		if filterValue != "" {
+			b.WriteString(common.DimSelectedStyle.Render("No matching sessions"))
+		} else {
+			b.WriteString(common.DimSelectedStyle.Render("No sessions"))
+		}
+		b.WriteString("\n")
+		return b.String()
+	}
+
+	for i, session := range filtered {
 		cursor := "  "
 		style := common.NormalStyle
 		if i == m.sessionIndex {
@@ -85,6 +107,12 @@ func (m Model) renderSessionsList() string {
 			cursor, indicator, session.Name, len(session.Panes))
 		b.WriteString(style.Render(line))
 		b.WriteString("\n")
+	}
+
+	// Show count if filtered
+	if filterValue != "" && len(filtered) != len(m.snapshot.Sessions) {
+		b.WriteString("\n")
+		b.WriteString(common.DimSelectedStyle.Render(fmt.Sprintf("showing %d of %d", len(filtered), len(m.snapshot.Sessions))))
 	}
 
 	return b.String()
@@ -149,14 +177,15 @@ func (m Model) renderHeader() string {
 }
 
 func (m Model) renderSessionTabs() string {
-	if len(m.snapshot.Sessions) == 0 {
+	filtered := m.filteredSessions()
+	if len(filtered) == 0 {
 		return common.DimSelectedStyle.Render("⚡ No sessions")
 	}
 
 	var tabs []string
 	tabs = append(tabs, "⚡")
 
-	for i, session := range m.snapshot.Sessions {
+	for i, session := range filtered {
 		name := session.Name
 
 		// Add marker if this is the currently attached session
@@ -177,7 +206,7 @@ func (m Model) renderSessionTabs() string {
 func (m Model) renderFooter() string {
 	keys := []string{"[←/→] session", "[↑/↓] navigate", "[Tab] focus", "[q] quit"}
 	if m.tab == TabSessions {
-		keys = append([]string{"[Enter] attach", "[a] add", "[r] rename", "[x] close"}, keys...)
+		keys = append([]string{"[Enter] attach", "[c] claude", "[x] codex", "[s] shell", "[r] rename", "[d] close", "[/] filter"}, keys...)
 	} else {
 		keys = append([]string{"[Enter] apply"}, keys...)
 	}

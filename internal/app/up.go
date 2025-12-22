@@ -218,6 +218,12 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 
 func (a *App) launchProvider(paneID string, prov *provider.Provider) error {
 	if prov.Command == "" {
+		// For shell panes, send clear to remove any garbage from mouse events
+		// that may have been captured before the shell was ready
+		if prov.Type == domain.PaneShell {
+			_ = a.tmux.SendKeysLiteral(paneID, "clear")
+			_ = a.tmux.SendEnter(paneID)
+		}
 		return nil
 	}
 	if err := a.tmux.SendKeysLiteral(paneID, prov.Command); err != nil {

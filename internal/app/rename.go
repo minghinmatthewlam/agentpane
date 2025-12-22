@@ -13,7 +13,9 @@ import (
 )
 
 type RenameOptions struct {
-	Title string
+	Title   string
+	Session string // Optional: if empty, uses current session
+	PaneID  string // Optional: if empty, uses current pane
 }
 
 type RenameResult struct {
@@ -22,18 +24,27 @@ type RenameResult struct {
 }
 
 func (a *App) Rename(opts RenameOptions) (RenameResult, error) {
-	if !a.tmux.InTmux() {
-		return RenameResult{}, fmt.Errorf("must be run inside tmux")
-	}
+	session := opts.Session
+	paneID := opts.PaneID
 
-	session, err := a.tmux.CurrentSession()
-	if err != nil {
-		return RenameResult{}, err
-	}
-
-	paneID, err := a.tmux.CurrentPane()
-	if err != nil {
-		return RenameResult{}, err
+	// If session/pane not specified, use current (requires being in tmux)
+	if session == "" || paneID == "" {
+		if !a.tmux.InTmux() {
+			return RenameResult{}, fmt.Errorf("must be run inside tmux or specify session/pane")
+		}
+		var err error
+		if session == "" {
+			session, err = a.tmux.CurrentSession()
+			if err != nil {
+				return RenameResult{}, err
+			}
+		}
+		if paneID == "" {
+			paneID, err = a.tmux.CurrentPane()
+			if err != nil {
+				return RenameResult{}, err
+			}
+		}
 	}
 
 	currentTitle, err := a.lookupPaneTitle(session, paneID)

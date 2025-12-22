@@ -23,13 +23,18 @@ func (m HelpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m HelpModel) View() string {
 	content := `Keys:
+  ←/→         Switch session
   ↑/k, ↓/j    Navigate
   Tab         Focus panel
   t           Switch tab
   Enter       Attach / Apply
-  a           Add pane
+  c           Add Claude pane
+  x           Add Codex pane
+  s           Add Shell pane
+  a           Add pane (dialog)
   r           Rename pane
-  x           Close pane
+  d           Close pane
+  /           Filter sessions
   ?           Help
   q           Quit`
 	style := lipgloss.NewStyle().
