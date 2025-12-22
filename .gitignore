@@ -1,0 +1,17 @@
+# Binaries
+agentpane
+bin/
+dist/
+
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Editors/OS
+.DS_Store
+.idea/
+.vscode/
