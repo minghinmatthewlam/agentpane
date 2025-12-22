@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	keybindingLine   = `bind-key g run-shell "agentpane popup"`
-	keybindingMarker = "agentpane popup"
+	keybindingLine   = `bind-key g run-shell "agentpane dashboard --tmux-window"`
+	keybindingMarker = "agentpane dashboard --tmux-window"
 )
 
 // EnsureKeybinding checks if the dashboard keybinding exists in tmux.conf

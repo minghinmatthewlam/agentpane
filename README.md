@@ -107,7 +107,7 @@ agentpane up --template quad
 Add to `~/.tmux.conf`:
 
 ```bash
-bind-key g run-shell "agentpane popup"
+bind-key g run-shell "agentpane dashboard --tmux-window"
 ```
 
 Reload:

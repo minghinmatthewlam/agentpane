@@ -25,9 +25,9 @@ COMMANDS:
 
 QUICK ACCESS (add to ~/.tmux.conf):
 
-    bind-key g run-shell "agentpane popup"
+    bind-key g run-shell "agentpane dashboard --tmux-window"
 
-Then press Prefix+g from any pane to open the dashboard popup.
+Then press Prefix+g from any pane to open the dashboard.
 Reload config with: tmux source-file ~/.tmux.conf
 
 DASHBOARD KEYS:

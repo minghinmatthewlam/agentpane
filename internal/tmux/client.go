@@ -134,6 +134,60 @@ func (c *Client) ListPanes(session string) ([]RawPane, error) {
 	return ParsePanes(out)
 }
 
+func (c *Client) ListWindows(session string) ([]string, error) {
+	out, err := c.runOutput("list-windows", "-t", session, "-F", "#{window_name}")
+	if err != nil {
+		if exitCode(err) == 1 {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var names []string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		names = append(names, line)
+	}
+	return names, nil
+}
+
+func (c *Client) HasWindow(session, windowName string) (bool, error) {
+	names, err := c.ListWindows(session)
+	if err != nil {
+		return false, err
+	}
+	for _, n := range names {
+		if n == windowName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *Client) SelectWindow(session, windowName string) error {
+	if strings.TrimSpace(session) == "" || strings.TrimSpace(windowName) == "" {
+		return fmt.Errorf("session and window name are required")
+	}
+	return c.run("select-window", "-t", session+":"+windowName)
+}
+
+func (c *Client) NewWindow(session, windowName, cwd, command string) error {
+	if strings.TrimSpace(session) == "" || strings.TrimSpace(windowName) == "" {
+		return fmt.Errorf("session and window name are required")
+	}
+	if strings.TrimSpace(command) == "" {
+		return fmt.Errorf("command is required")
+	}
+	args := []string{"new-window", "-d", "-t", session, "-n", windowName}
+	if strings.TrimSpace(cwd) != "" {
+		args = append(args, "-c", cwd)
+	}
+	args = append(args, command)
+	return c.run(args...)
+}
+
 func (c *Client) SplitPane(session, cwd string) (string, error) {
 	out, err := c.runOutput("split-window", "-t", session+":0", "-c", cwd, "-P", "-F", "#{pane_id}")
 	if err != nil {

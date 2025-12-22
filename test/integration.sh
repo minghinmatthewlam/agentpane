@@ -23,10 +23,14 @@ HOME="$HOME_DIR" AGENTPANE_TMUX_SOCKET="$SOCK" "$ROOT/agentpane" popup --help >/
 
 tmux -L "$SOCK" has-session -t repo
 
+# Dashboard should be able to open a tmux window when invoked from inside tmux.
+PANE_ID=$(tmux -L "$SOCK" list-panes -t repo:0 -F '#{pane_id}' | head -n1)
+TMUX=1 TMUX_PANE="$PANE_ID" HOME="$HOME_DIR" AGENTPANE_TMUX_SOCKET="$SOCK" "$ROOT/agentpane" dashboard --tmux-window
+tmux -L "$SOCK" list-windows -t repo -F '#{window_name}' | grep -q '^agentpane-dashboard$'
+
 PANES=$(tmux -L "$SOCK" list-panes -t repo:0 | wc -l | tr -d ' ')
 [ "$PANES" -eq 2 ] || (echo "expected 2 panes, got $PANES" && exit 1)
 
-PANE_ID=$(tmux -L "$SOCK" list-panes -t repo:0 -F '#{pane_id}' | head -n1)
 TMUX=1 TMUX_PANE="$PANE_ID" HOME="$HOME_DIR" AGENTPANE_TMUX_SOCKET="$SOCK" "$ROOT/agentpane" add shell
 
 PANES=$(tmux -L "$SOCK" list-panes -t repo:0 | wc -l | tr -d ' ')
