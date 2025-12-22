@@ -10,6 +10,7 @@ import (
 const (
 	keybindingLine   = `bind-key g run-shell "agentpane dashboard --tmux-window"`
 	keybindingMarker = "agentpane dashboard --tmux-window"
+	legacyMarker     = "agentpane popup"
 )
 
 // EnsureKeybinding checks if the dashboard keybinding exists in tmux.conf
@@ -68,7 +69,7 @@ func keybindingExists(confPath string) (bool, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		// Check if line contains our keybinding marker
-		if strings.Contains(line, keybindingMarker) {
+		if strings.Contains(line, keybindingMarker) || strings.Contains(line, legacyMarker) {
 			return true, nil
 		}
 	}
