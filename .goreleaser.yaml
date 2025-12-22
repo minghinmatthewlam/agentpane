@@ -38,4 +38,3 @@ brews:
       bin.install "agentpane"
     test: |
       system "#{bin}/agentpane", "--help"
-    skip_upload: true
