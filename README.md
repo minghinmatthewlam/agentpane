@@ -4,6 +4,25 @@
 
 ## Installation
 
+### Homebrew (recommended)
+
+```bash
+brew install minghinmatthewlam/tap/agentpane
+```
+
+### curl (no Go required)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/minghinmatthewlam/agentpane/main/install.sh | bash
+```
+
+Optional overrides:
+
+```bash
+VERSION=0.1.0 INSTALL_DIR=~/.local/bin \
+  curl -fsSL https://raw.githubusercontent.com/minghinmatthewlam/agentpane/main/install.sh | bash
+```
+
 ### Go install
 
 ```bash
@@ -73,7 +92,7 @@ agentpane up --template quad
 Add to `~/.tmux.conf`:
 
 ```bash
-bind-key g run-shell "agentpane dashboard"
+bind-key g run-shell "agentpane popup"
 ```
 
 Reload:

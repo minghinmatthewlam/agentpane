@@ -23,3 +23,7 @@
 - Prefer `go test ./...` (and build) after making changes.
 - For tmux-related smoke tests, use an isolated socket via `AGENTPANE_TMUX_SOCKET` to avoid touching the user's real tmux server.
 
+## Releases
+- Releases are cut by pushing a semver tag like `v0.1.0`; GitHub Actions runs GoReleaser from `.goreleaser.yaml`.
+- Homebrew formula updates require `HOMEBREW_TAP_GITHUB_TOKEN` with write access to `minghinmatthewlam/homebrew-tap`.
+- `install.sh` installs from GitHub Releases and verifies SHA256 checksums.
