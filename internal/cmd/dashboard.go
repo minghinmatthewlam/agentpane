@@ -43,11 +43,6 @@ func runDashboard(a *app.App) error {
 		return nil
 	}
 
-	// Check if user requested to attach to a session
-	if sessionName := m.AttachSession(); sessionName != "" {
-		return a.Attach(sessionName)
-	}
-
 	// Check if user requested to add a pane
 	if paneType := m.AddPaneType(); paneType != "" {
 		result, err := a.Add(app.AddOptions{Type: paneType})
