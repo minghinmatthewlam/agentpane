@@ -31,7 +31,7 @@ brews:
     repository:
       owner: minghinmatthewlam
       name: homebrew-tap
-    folder: Formula
+    directory: Formula
     homepage: https://github.com/minghinmatthewlam/agentpane
     description: tmux-based environment for managing AI coding agent panes
     license: MIT
