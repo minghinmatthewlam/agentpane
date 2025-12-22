@@ -1,0 +1,7 @@
+description: "2 Codex + 1 Claude + Shell"
+panes:
+  - type: codex
+  - type: codex
+  - type: claude
+  - type: shell
+

@@ -1,0 +1,5 @@
+description: "Codex + Claude"
+panes:
+  - type: codex
+  - type: claude
+
