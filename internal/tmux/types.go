@@ -14,4 +14,5 @@ type RawPane struct {
 	CurrentCommand string
 	CurrentPath    string
 	PID            string
+	LastActive     string
 }

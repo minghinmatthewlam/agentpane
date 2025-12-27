@@ -97,12 +97,9 @@ func (m Model) renderTree() string {
 		if item.Type == ItemSession {
 			// Session row
 			indicator := "○"
-			// Check if any pane in this session is active
 			for j := range m.snapshot.Sessions {
 				if m.snapshot.Sessions[j].Name == item.Session {
-					if sessionHasActive(m.snapshot.Sessions[j]) {
-						indicator = "●"
-					}
+					indicator = sessionStatusIndicator(m.snapshot.Sessions[j])
 					break
 				}
 			}
@@ -118,12 +115,7 @@ func (m Model) renderTree() string {
 		} else {
 			// Pane row (indented)
 			pane := item.Pane
-			indicator := "○"
-			if pane.Status == domain.StatusActive {
-				indicator = "●"
-			} else if pane.Status == domain.StatusUnknown {
-				indicator = "?"
-			}
+			indicator := paneStatusIndicator(pane.AgentStatus)
 
 			typeBadge := fmt.Sprintf("[%s]", pane.Type)
 			line := fmt.Sprintf("%s    %s %s %s", cursor, indicator, pane.Title, typeBadge)
@@ -177,10 +169,7 @@ func (m Model) renderPanePreview() string {
 
 	for _, pane := range session.Panes {
 		// Pane header
-		indicator := "○"
-		if pane.Status == domain.StatusActive {
-			indicator = "●"
-		}
+		indicator := paneStatusIndicator(pane.AgentStatus)
 		header := fmt.Sprintf("%s %s [%s]", indicator, pane.Title, pane.Type)
 		b.WriteString(common.DimSelectedStyle.Render(header))
 		b.WriteString("\n")
@@ -351,11 +340,20 @@ func (m Model) renderTemplatePreview() string {
 	return b.String()
 }
 
-func sessionHasActive(s domain.Session) bool {
+func paneStatusIndicator(status domain.AgentStatus) string {
+	switch status {
+	case domain.AgentStatusRunning:
+		return "●"
+	default:
+		return "○"
+	}
+}
+
+func sessionStatusIndicator(s domain.Session) string {
 	for _, p := range s.Panes {
-		if p.Status == domain.StatusActive {
-			return true
+		if p.AgentStatus == domain.AgentStatusRunning {
+			return "●"
 		}
 	}
-	return false
+	return "○"
 }

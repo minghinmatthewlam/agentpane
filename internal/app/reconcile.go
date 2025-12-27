@@ -101,9 +101,11 @@ func convertPanes(raw []tmux.RawPane) []domain.Pane {
 			Title:          p.Title,
 			Type:           domain.PaneUnknown,
 			Status:         domain.StatusUnknown,
+			AgentStatus:    domain.AgentStatusIdle,
 			PID:            atoiDefault(p.PID),
 			CurrentCommand: p.CurrentCommand,
 			CurrentPath:    p.CurrentPath,
+			LastActive:     parseUnixTimestamp(p.LastActive),
 		})
 	}
 	return out
@@ -113,6 +115,18 @@ func parseCreatedAt(raw string) time.Time {
 	seconds, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || seconds <= 0 {
 		return time.Time{}
+	}
+	return time.Unix(seconds, 0)
+}
+
+func parseUnixTimestamp(raw string) time.Time {
+	seconds, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || seconds <= 0 {
+		return time.Time{}
+	}
+	// Heuristic: values larger than 1e12 are likely milliseconds.
+	if seconds > 1_000_000_000_000 {
+		return time.Unix(0, seconds*int64(time.Millisecond))
 	}
 	return time.Unix(seconds, 0)
 }

@@ -19,15 +19,24 @@ const (
 	StatusUnknown PaneStatus = "unknown"
 )
 
+type AgentStatus string
+
+const (
+	AgentStatusIdle    AgentStatus = "idle"
+	AgentStatusRunning AgentStatus = "running"
+)
+
 type Pane struct {
 	ID             string
 	Index          int
 	Title          string
 	Type           PaneType
 	Status         PaneStatus
+	AgentStatus    AgentStatus
 	PID            int
 	CurrentCommand string
 	CurrentPath    string
+	LastActive     time.Time
 }
 
 type Session struct {

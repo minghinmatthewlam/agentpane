@@ -40,7 +40,7 @@ func ParseSessions(output string) ([]RawSession, error) {
 }
 
 func ParsePanes(output string) ([]RawPane, error) {
-	rows := parseTable(output, 6)
+	rows := parseTable(output, 7)
 	out := make([]RawPane, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, RawPane{
@@ -50,6 +50,7 @@ func ParsePanes(output string) ([]RawPane, error) {
 			CurrentCommand: r[3],
 			CurrentPath:    r[4],
 			PID:            r[5],
+			LastActive:     r[6],
 		})
 	}
 	return out, nil

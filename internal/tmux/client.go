@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -80,6 +81,26 @@ func (c *Client) CurrentPane() (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+func (c *Client) CurrentWindowIndex() (string, error) {
+	if !c.InTmux() {
+		return "", ErrNotInTmux
+	}
+
+	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
+		out, err := c.runOutput("display-message", "-p", "-t", pane, "#{window_index}")
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(out), nil
+	}
+
+	out, err := c.runOutput("display-message", "-p", "#{window_index}")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (c *Client) HasSession(name string) (bool, error) {
 	_, err := c.runOutput("has-session", "-t", name)
 	if err == nil {
@@ -128,6 +149,18 @@ func (c *Client) ListSessions() ([]RawSession, error) {
 
 func (c *Client) ListPanes(session string) ([]RawPane, error) {
 	out, err := c.runOutput("list-panes", "-t", session+":0", "-F", PaneFormat)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePanes(out)
+}
+
+func (c *Client) ListPanesInWindow(session, window string) ([]RawPane, error) {
+	target := strings.TrimSpace(session)
+	if strings.TrimSpace(window) != "" {
+		target = target + ":" + window
+	}
+	out, err := c.runOutput("list-panes", "-t", target, "-F", PaneFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +237,39 @@ func (c *Client) SplitPaneHorizontal(session, cwd string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+func (c *Client) SplitPaneWithCommand(position string, size int, command string) (string, error) {
+	if strings.TrimSpace(command) == "" {
+		return "", fmt.Errorf("command is required")
+	}
+	pos := strings.ToLower(strings.TrimSpace(position))
+	args := []string{"split-window", "-P", "-F", "#{pane_id}"}
+	if size > 0 {
+		args = append(args, "-l", strconv.Itoa(size))
+	}
+	switch pos {
+	case "", "right":
+		args = append(args, "-h")
+	case "left":
+		args = append(args, "-h", "-b")
+	case "top":
+		args = append(args, "-v", "-b")
+	case "bottom":
+		args = append(args, "-v")
+	default:
+		return "", fmt.Errorf("invalid position %q (use left, right, top, bottom)", position)
+	}
+	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
+		args = append(args, "-t", pane)
+	}
+	args = append(args, command)
+
+	out, err := c.runOutput(args...)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (c *Client) SetPaneTitle(paneID, title string) error {
 	return c.run("select-pane", "-t", paneID, "-T", title)
 }
@@ -214,6 +280,21 @@ func (c *Client) KillPane(paneID string) error {
 
 func (c *Client) CapturePaneContent(paneID string) (string, error) {
 	out, err := c.runOutput("capture-pane", "-t", paneID, "-p")
+	if err != nil {
+		return "", err
+	}
+	return out, nil
+}
+
+func (c *Client) CapturePaneLines(paneID string, lines int) (string, error) {
+	if strings.TrimSpace(paneID) == "" {
+		return "", fmt.Errorf("pane id is required")
+	}
+	args := []string{"capture-pane", "-t", paneID, "-p"}
+	if lines > 0 {
+		args = append(args, "-S", fmt.Sprintf("-%d", lines))
+	}
+	out, err := c.runOutput(args...)
 	if err != nil {
 		return "", err
 	}

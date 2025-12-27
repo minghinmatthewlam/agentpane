@@ -3,7 +3,7 @@ package tmux
 import "testing"
 
 func TestParsePanesEscapedDelimiter(t *testing.T) {
-	output := "%0\\0370\\037codex-1\\037zsh\\037/Users/test\\037123\n"
+	output := "%0\\0370\\037codex-1\\037zsh\\037/Users/test\\037123\\0371700000000\n"
 	panes, err := ParsePanes(output)
 	if err != nil {
 		t.Fatalf("ParsePanes error: %v", err)

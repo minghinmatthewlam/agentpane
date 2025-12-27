@@ -24,5 +24,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.AddCommand(NewTemplatesCmd(a))
 	root.AddCommand(NewHelpCmd())
 	root.AddCommand(NewSearchCmd(a))
+	root.AddCommand(NewOverlayCmd(a))
+	root.AddCommand(NewOverlayViewCmd(a))
 	return root
 }

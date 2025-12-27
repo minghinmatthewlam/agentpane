@@ -13,5 +13,6 @@ const (
 		"#{pane_title}" + Delim +
 		"#{pane_current_command}" + Delim +
 		"#{pane_current_path}" + Delim +
-		"#{pane_pid}"
+		"#{pane_pid}" + Delim +
+		"#{pane_last_active}"
 )
