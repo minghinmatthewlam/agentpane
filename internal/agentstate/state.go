@@ -25,6 +25,7 @@ const (
 	defaultPromptRegex = "(?m)^\\s*(?:›|❯|>)\\s*.*$"
 	// Maximum non-empty lines to check for running keywords (prevents old output from affecting status)
 	maxOutputLinesToCheck = 8
+	maxPromptLinesToCheck = 4
 )
 
 type State struct {
@@ -150,18 +151,12 @@ func OutputLines() int {
 }
 
 func MatchOutput(output string) (domain.AgentStatus, bool) {
-	lines := linesFromOutput(output)
+	lines := lastNonEmptyLines(linesFromOutput(output), maxOutputLinesToCheck)
 	if len(lines) == 0 {
 		return domain.AgentStatusIdle, false
 	}
 	m := getMatcher()
-	checked := 0
-	for i := len(lines) - 1; i >= 0 && checked < maxOutputLinesToCheck; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-		checked++
+	for _, line := range lines {
 		if m.running != nil && m.running.MatchString(line) {
 			return domain.AgentStatusRunning, true
 		}
@@ -170,7 +165,7 @@ func MatchOutput(output string) (domain.AgentStatus, bool) {
 }
 
 func MatchPrompt(output string) (domain.AgentStatus, bool) {
-	lines := linesFromOutput(output)
+	lines := lastNonEmptyLines(linesFromOutput(output), maxPromptLinesToCheck)
 	if len(lines) == 0 {
 		return domain.AgentStatusIdle, false
 	}
@@ -178,13 +173,7 @@ func MatchPrompt(output string) (domain.AgentStatus, bool) {
 	if m.prompt == nil {
 		return domain.AgentStatusIdle, false
 	}
-	checked := 0
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-		checked++
+	for _, line := range lines {
 		// Codex idle indicators
 		if isCodexContextLine(line) {
 			return domain.AgentStatusIdle, true
@@ -196,9 +185,6 @@ func MatchPrompt(output string) (domain.AgentStatus, bool) {
 		// Generic prompt detection (›, ❯, or > at start of line)
 		if m.prompt.MatchString(line) {
 			return domain.AgentStatusIdle, true
-		}
-		if checked >= 4 {
-			break
 		}
 	}
 	return domain.AgentStatusIdle, false
@@ -242,6 +228,21 @@ func envOrDefault(key, fallback string) string {
 
 func linesFromOutput(output string) []string {
 	return strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
+}
+
+func lastNonEmptyLines(lines []string, limit int) []string {
+	if limit <= 0 || len(lines) == 0 {
+		return nil
+	}
+	out := make([]string, 0, limit)
+	for i := len(lines) - 1; i >= 0 && len(out) < limit; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 func isCodexContextLine(line string) bool {
