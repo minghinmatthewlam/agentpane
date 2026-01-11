@@ -26,9 +26,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.tooNarrow = msg.Width < minWidth || msg.Height < minHeight
+		m = m.applyWindowSize(msg)
 		return m, nil
 	case snapshotMsg:
 		m.snapshot = msg.snapshot
@@ -238,9 +236,7 @@ func (m Model) handleFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.tooNarrow = msg.Width < minWidth || msg.Height < minHeight
+		m = m.applyWindowSize(msg)
 		return m, nil
 	}
 
@@ -343,6 +339,13 @@ func (m Model) scheduleRefresh() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return tickMsg{}
 	})
+}
+
+func (m Model) applyWindowSize(msg tea.WindowSizeMsg) Model {
+	m.width = msg.Width
+	m.height = msg.Height
+	m.tooNarrow = msg.Width < minWidth || msg.Height < minHeight
+	return m
 }
 
 func (m Model) updateDialog(msg tea.Msg) (tea.Model, tea.Cmd) {
