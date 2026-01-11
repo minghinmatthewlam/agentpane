@@ -106,17 +106,7 @@ func promptForTitle(current string) (string, error) {
 
 func (a *App) updateStateForRename(session, paneID, title string) error {
 	st := a.loadStateOrNew()
-
-	ss, ok := st.Sessions[session]
-	if !ok {
-		path, _ := a.tmux.SessionPath(session)
-		ss = &state.SessionState{
-			Path:      path,
-			CreatedAt: time.Now(),
-			Panes:     []*state.PaneState{},
-		}
-		st.Sessions[session] = ss
-	}
+	ss := a.ensureSessionState(st, session)
 
 	now := time.Now()
 	for _, p := range ss.Panes {
