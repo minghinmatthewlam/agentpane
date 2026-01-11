@@ -20,27 +20,29 @@ type Registry struct {
 }
 
 func NewRegistry() *Registry {
-	return &Registry{
-		providers: map[domain.PaneType]*Provider{
-			domain.PaneCodex: {
-				Type:        domain.PaneCodex,
-				Command:     "codex",
-				TitlePrefix: "codex-",
-				Executable:  "codex",
-			},
-			domain.PaneClaude: {
-				Type:        domain.PaneClaude,
-				Command:     "claude",
-				TitlePrefix: "claude-",
-				Executable:  "claude",
-			},
-			domain.PaneShell: {
-				Type:        domain.PaneShell,
-				Command:     "",
-				TitlePrefix: "shell-",
-				Executable:  "",
-			},
+	providers := map[domain.PaneType]*Provider{
+		domain.PaneCodex: {
+			Command:     "codex",
+			TitlePrefix: "codex-",
+			Executable:  "codex",
 		},
+		domain.PaneClaude: {
+			Command:     "claude",
+			TitlePrefix: "claude-",
+			Executable:  "claude",
+		},
+		domain.PaneShell: {
+			Command:     "",
+			TitlePrefix: "shell-",
+			Executable:  "",
+		},
+	}
+	for paneType, provider := range providers {
+		provider.Type = paneType
+	}
+
+	return &Registry{
+		providers: providers,
 		overrides: make(map[domain.PaneType]string),
 	}
 }
