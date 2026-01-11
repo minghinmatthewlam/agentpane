@@ -203,11 +203,7 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 		})
 	}
 
-	layout := "tiled"
-	if len(panes) == 2 {
-		layout = "even-horizontal"
-	}
-	_ = a.tmux.SelectLayout(name, layout)
+	_ = a.tmux.SelectLayout(name, layoutForPaneCount(len(panes)))
 
 	if err := a.replaceSessionState(name, cwd, paneStates); err != nil {
 		return nil, err
