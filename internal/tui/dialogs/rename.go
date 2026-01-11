@@ -3,7 +3,6 @@ package dialogs
 import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type RenameResult struct {
@@ -44,8 +43,5 @@ func (m RenameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m RenameModel) View() string {
 	content := "Rename pane:\n\n" + m.input.View() + "\n\n[Enter] save  [Esc] cancel"
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return style.Render(content)
+	return dialogStyle().Render(content)
 }

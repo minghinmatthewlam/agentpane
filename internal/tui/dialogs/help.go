@@ -2,7 +2,6 @@ package dialogs
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type HelpResult struct{}
@@ -38,8 +37,5 @@ func (m HelpModel) View() string {
   /           Filter sessions
   ?           Help
   q           Quit`
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return style.Render(content)
+	return dialogStyle().Render(content)
 }

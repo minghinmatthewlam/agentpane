@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type AddPaneResult struct {
@@ -61,9 +60,5 @@ func (m AddPaneModel) View() string {
 		b.WriteString(fmt.Sprintf("%s%s\n", cursor, opt))
 	}
 	b.WriteString("\n[Enter] select  [Esc] cancel")
-
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return style.Render(b.String())
+	return dialogStyle().Render(b.String())
 }

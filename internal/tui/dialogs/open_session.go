@@ -176,11 +176,7 @@ func (m OpenSessionModel) View() string {
 	lines = append(lines, "[Enter] open  [↑/↓] navigate  [Tab] complete  [Esc] cancel")
 
 	content := strings.Join(lines, "\n")
-
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return style.Render(content)
+	return dialogStyle().Render(content)
 }
 
 // expandPath expands ~ to home directory, preserving trailing slash

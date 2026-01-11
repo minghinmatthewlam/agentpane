@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type ConfirmResult struct {
@@ -37,8 +36,5 @@ func (m ConfirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ConfirmModel) View() string {
 	content := fmt.Sprintf("%s\n\n%s\n\n[y] yes  [n] no", m.Title, m.Body)
-	style := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return style.Render(content)
+	return dialogStyle().Render(content)
 }
