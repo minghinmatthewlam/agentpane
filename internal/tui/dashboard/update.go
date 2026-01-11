@@ -248,7 +248,7 @@ func (m Model) handleFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // filteredSessions returns sessions matching the current filter
 func (m Model) filteredSessions() []domain.Session {
-	filter := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
+	filter := m.filterQuery()
 	if filter == "" {
 		return m.snapshot.Sessions
 	}

@@ -64,7 +64,7 @@ func (m Model) renderTree() string {
 	b.WriteString("\n\n")
 
 	// Show filter input if active or has value
-	filterValue := strings.TrimSpace(m.filterInput.Value())
+	filterValue := m.filterValue()
 	if m.filterActive || filterValue != "" {
 		if m.filterActive {
 			b.WriteString("Filter: " + m.filterInput.View())

@@ -1,6 +1,8 @@
 package dashboard
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -126,6 +128,14 @@ func NewModel(a *app.App) Model {
 		filterInput:     ti,
 		capturedContent: make(map[string]string),
 	}
+}
+
+func (m Model) filterValue() string {
+	return strings.TrimSpace(m.filterInput.Value())
+}
+
+func (m Model) filterQuery() string {
+	return strings.ToLower(m.filterValue())
 }
 
 func (m Model) Init() tea.Cmd {
