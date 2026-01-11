@@ -99,7 +99,7 @@ func IsFresh(state State, now time.Time) bool {
 }
 
 func MapStatus(state string) (domain.AgentStatus, bool) {
-	switch strings.ToLower(strings.TrimSpace(state)) {
+	switch normalizeLower(state) {
 	case "running", "in_progress", "in-progress":
 		return domain.AgentStatusRunning, true
 	case "idle", "waiting", "paused", "done", "completed", "success", "error", "failed", "failure":
@@ -111,7 +111,7 @@ func MapStatus(state string) (domain.AgentStatus, bool) {
 }
 
 func MatchesTool(paneType domain.PaneType, tool string) bool {
-	switch strings.ToLower(strings.TrimSpace(tool)) {
+	switch normalizeLower(tool) {
 	case "":
 		return true
 	case "codex":
@@ -218,6 +218,10 @@ func envOrDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func normalizeLower(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func positiveIntEnv(key string) (int, bool) {
