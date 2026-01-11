@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/minghinmatthewlam/agentpane/internal/domain"
 	"github.com/minghinmatthewlam/agentpane/internal/tui/common"
 )
 
@@ -99,7 +98,7 @@ func (m Model) renderTree() string {
 			indicator := "○"
 			for j := range m.snapshot.Sessions {
 				if m.snapshot.Sessions[j].Name == item.Session {
-					indicator = sessionStatusIndicator(m.snapshot.Sessions[j])
+					indicator = common.SessionStatusIndicator(m.snapshot.Sessions[j])
 					break
 				}
 			}
@@ -115,7 +114,7 @@ func (m Model) renderTree() string {
 		} else {
 			// Pane row (indented)
 			pane := item.Pane
-			indicator := paneStatusIndicator(pane.AgentStatus)
+			indicator := common.AgentStatusIndicator(pane.AgentStatus)
 
 			typeBadge := fmt.Sprintf("[%s]", pane.Type)
 			line := fmt.Sprintf("%s    %s %s %s", cursor, indicator, pane.Title, typeBadge)
@@ -169,7 +168,7 @@ func (m Model) renderPanePreview() string {
 
 	for _, pane := range session.Panes {
 		// Pane header
-		indicator := paneStatusIndicator(pane.AgentStatus)
+		indicator := common.AgentStatusIndicator(pane.AgentStatus)
 		header := fmt.Sprintf("%s %s [%s]", indicator, pane.Title, pane.Type)
 		b.WriteString(common.DimSelectedStyle.Render(header))
 		b.WriteString("\n")
@@ -338,22 +337,4 @@ func (m Model) renderTemplatePreview() string {
 		b.WriteString(fmt.Sprintf("  - %s\n", title))
 	}
 	return b.String()
-}
-
-func paneStatusIndicator(status domain.AgentStatus) string {
-	switch status {
-	case domain.AgentStatusRunning:
-		return "●"
-	default:
-		return "○"
-	}
-}
-
-func sessionStatusIndicator(s domain.Session) string {
-	for _, p := range s.Panes {
-		if p.AgentStatus == domain.AgentStatusRunning {
-			return "●"
-		}
-	}
-	return "○"
 }

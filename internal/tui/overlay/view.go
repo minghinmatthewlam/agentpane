@@ -47,15 +47,6 @@ func renderItem(it item) string {
 	return fmt.Sprintf("  %s %s %s", it.indicator, label, typeBadge)
 }
 
-func paneIndicator(status domain.AgentStatus) string {
-	switch status {
-	case domain.AgentStatusRunning:
-		return "●"
-	default:
-		return "○"
-	}
-}
-
 func buildItems(snapshot domain.Snapshot) []item {
 	var items []item
 	for i := range snapshot.Sessions {
@@ -72,7 +63,7 @@ func buildItems(snapshot domain.Snapshot) []item {
 			Name:  session.Name,
 			Panes: visiblePanes,
 		}
-		sessionIndicator := sessionStatusIndicator(visibleSession)
+		sessionIndicator := common.SessionStatusIndicator(visibleSession)
 		sessionItem := item{
 			kind:      itemSession,
 			session:   session.Name,
@@ -85,7 +76,7 @@ func buildItems(snapshot domain.Snapshot) []item {
 				kind:      itemPane,
 				session:   session.Name,
 				pane:      pane,
-				indicator: paneIndicator(pane.AgentStatus),
+				indicator: common.AgentStatusIndicator(pane.AgentStatus),
 			})
 		}
 	}
@@ -106,11 +97,3 @@ func truncate(s string, width int) string {
 	return string(runes[:width-3]) + "..."
 }
 
-func sessionStatusIndicator(s domain.Session) string {
-	for _, p := range s.Panes {
-		if p.AgentStatus == domain.AgentStatusRunning {
-			return "●"
-		}
-	}
-	return "○"
-}
