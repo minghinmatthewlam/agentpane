@@ -240,26 +240,9 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-func lastNonEmptyLine(output string) string {
-	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line != "" {
-			return line
-		}
-	}
-	return ""
-}
-
 func isCodexContextLine(line string) bool {
 	lower := strings.ToLower(line)
-	if !strings.Contains(lower, "context left") {
-		return false
-	}
-	if strings.Contains(lower, "shortcuts") {
-		return true
-	}
-	return true
+	return strings.Contains(lower, "context left")
 }
 
 func isClaudeSendLine(line string) bool {
