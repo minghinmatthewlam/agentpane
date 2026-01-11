@@ -143,8 +143,7 @@ func (a *App) createSessionFromPanes(name, cwd string, panes []config.PaneSpec) 
 	}
 
 	// Ensure titles are visible within this session.
-	_ = a.tmux.SetOption(name, "pane-border-status", "top")
-	_ = a.tmux.SetOption(name, "pane-border-format", " #{pane_title} ")
+	_ = a.enablePaneTitles(name)
 
 	var warnings []string
 

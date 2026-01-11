@@ -59,10 +59,7 @@ func (a *App) ApplyTemplate(opts ApplyTemplateOptions) (ApplyTemplateResult, err
 		return ApplyTemplateResult{}, fmt.Errorf("session has %d panes; use --force to apply template", len(panes))
 	}
 
-	if err := a.tmux.SetOption(session, "pane-border-status", "top"); err != nil {
-		return ApplyTemplateResult{}, err
-	}
-	if err := a.tmux.SetOption(session, "pane-border-format", " #{pane_title} "); err != nil {
+	if err := a.enablePaneTitles(session); err != nil {
 		return ApplyTemplateResult{}, err
 	}
 
