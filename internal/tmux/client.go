@@ -50,15 +50,7 @@ func (c *Client) CurrentSession() (string, error) {
 
 	// Prefer targeting the current pane to avoid "no current client" issues
 	// when running inside a detached session or during scripted tests.
-	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
-		out, err := c.runOutput("display-message", "-p", "-t", pane, "#{session_name}")
-		if err != nil {
-			return "", err
-		}
-		return strings.TrimSpace(out), nil
-	}
-
-	out, err := c.runOutput("display-message", "-p", "#{session_name}")
+	out, err := c.displayMessage("#{session_name}", tmuxPaneTarget())
 	if err != nil {
 		return "", err
 	}
@@ -70,11 +62,11 @@ func (c *Client) CurrentPane() (string, error) {
 		return "", ErrNotInTmux
 	}
 
-	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
+	if pane := tmuxPaneTarget(); pane != "" {
 		return pane, nil
 	}
 
-	out, err := c.runOutput("display-message", "-p", "#{pane_id}")
+	out, err := c.displayMessage("#{pane_id}", "")
 	if err != nil {
 		return "", err
 	}
@@ -86,15 +78,7 @@ func (c *Client) CurrentWindowIndex() (string, error) {
 		return "", ErrNotInTmux
 	}
 
-	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
-		out, err := c.runOutput("display-message", "-p", "-t", pane, "#{window_index}")
-		if err != nil {
-			return "", err
-		}
-		return strings.TrimSpace(out), nil
-	}
-
-	out, err := c.runOutput("display-message", "-p", "#{window_index}")
+	out, err := c.displayMessage("#{window_index}", tmuxPaneTarget())
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +242,7 @@ func (c *Client) SplitPaneWithCommand(position string, size int, command string)
 	default:
 		return "", fmt.Errorf("invalid position %q (use left, right, top, bottom)", position)
 	}
-	if pane := strings.TrimSpace(os.Getenv("TMUX_PANE")); pane != "" {
+	if pane := tmuxPaneTarget(); pane != "" {
 		args = append(args, "-t", pane)
 	}
 	args = append(args, command)
@@ -408,10 +392,23 @@ func (c *Client) runOutput(args ...string) (string, error) {
 	return stdout.String(), nil
 }
 
+func (c *Client) displayMessage(format, target string) (string, error) {
+	args := []string{"display-message", "-p"}
+	if strings.TrimSpace(target) != "" {
+		args = append(args, "-t", target)
+	}
+	args = append(args, format)
+	return c.runOutput(args...)
+}
+
 func exitCode(err error) int {
 	var ee *exec.ExitError
 	if !errors.As(err, &ee) {
 		return -1
 	}
 	return ee.ExitCode()
+}
+
+func tmuxPaneTarget() string {
+	return strings.TrimSpace(os.Getenv("TMUX_PANE"))
 }
