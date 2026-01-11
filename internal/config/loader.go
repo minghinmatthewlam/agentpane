@@ -28,13 +28,10 @@ func LoadAll(cwd string) (*Loaded, error) {
 	}
 
 	var globalCfg Config
-	globalLoaded := false
-	if data, err := os.ReadFile(globalPath); err == nil {
-		if err := yaml.Unmarshal(data, &globalCfg); err != nil {
-			return nil, err
-		}
-		globalLoaded = true
-	} else if !errors.Is(err, os.ErrNotExist) {
+	globalLoaded, err := loadYAMLFile(globalPath, func(data []byte) error {
+		return yaml.Unmarshal(data, &globalCfg)
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -45,12 +42,10 @@ func LoadAll(cwd string) (*Loaded, error) {
 		return nil, err
 	}
 	if found {
-		if data, err := os.ReadFile(repoPath); err == nil {
-			if err := yaml.Unmarshal(data, &repoCfg); err != nil {
-				return nil, err
-			}
-			repoLoaded = true
-		} else if !errors.Is(err, os.ErrNotExist) {
+		repoLoaded, err = loadYAMLFile(repoPath, func(data []byte) error {
+			return yaml.Unmarshal(data, &repoCfg)
+		})
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -85,4 +80,18 @@ func LoadAll(cwd string) (*Loaded, error) {
 		RepoPath:   repoPath,
 		GlobalPath: globalPath,
 	}, nil
+}
+
+func loadYAMLFile(path string, decode func([]byte) error) (bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
+	}
+	if err := decode(data); err != nil {
+		return false, err
+	}
+	return true, nil
 }
