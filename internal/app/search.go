@@ -26,13 +26,15 @@ func (a *App) Search(query string) ([]SearchResult, error) {
 
 	var results []SearchResult
 	for _, session := range snapshot.Sessions {
-		if strings.Contains(strings.ToLower(session.Name), query) {
+		sessionName := strings.ToLower(session.Name)
+		if strings.Contains(sessionName, query) {
 			results = append(results, SearchResult{
 				Session: session.Name,
 			})
 		}
 		for _, pane := range session.Panes {
-			if strings.Contains(strings.ToLower(pane.Title), query) {
+			title := strings.ToLower(pane.Title)
+			if strings.Contains(title, query) {
 				results = append(results, SearchResult{
 					Session: session.Name,
 					PaneID:  pane.ID,
