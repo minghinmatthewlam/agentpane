@@ -150,7 +150,7 @@ func OutputLines() int {
 }
 
 func MatchOutput(output string) (domain.AgentStatus, bool) {
-	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
+	lines := linesFromOutput(output)
 	if len(lines) == 0 {
 		return domain.AgentStatusIdle, false
 	}
@@ -170,7 +170,7 @@ func MatchOutput(output string) (domain.AgentStatus, bool) {
 }
 
 func MatchPrompt(output string) (domain.AgentStatus, bool) {
-	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
+	lines := linesFromOutput(output)
 	if len(lines) == 0 {
 		return domain.AgentStatusIdle, false
 	}
@@ -238,6 +238,10 @@ func envOrDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func linesFromOutput(output string) []string {
+	return strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
 }
 
 func isCodexContextLine(line string) bool {
