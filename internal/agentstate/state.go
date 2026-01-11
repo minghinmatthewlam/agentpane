@@ -124,28 +124,22 @@ func MatchesTool(paneType domain.PaneType, tool string) bool {
 }
 
 func IdleThreshold() time.Duration {
-	if raw := strings.TrimSpace(os.Getenv("AGENTPANE_IDLE_SECONDS")); raw != "" {
-		if v, err := strconv.Atoi(raw); err == nil && v > 0 {
-			return time.Duration(v) * time.Second
-		}
+	if v, ok := positiveIntEnv("AGENTPANE_IDLE_SECONDS"); ok {
+		return time.Duration(v) * time.Second
 	}
 	return time.Duration(defaultIdleSeconds) * time.Second
 }
 
 func ttl() time.Duration {
-	if raw := strings.TrimSpace(os.Getenv("AGENTPANE_AGENT_STATE_TTL_SECONDS")); raw != "" {
-		if v, err := strconv.Atoi(raw); err == nil && v > 0 {
-			return time.Duration(v) * time.Second
-		}
+	if v, ok := positiveIntEnv("AGENTPANE_AGENT_STATE_TTL_SECONDS"); ok {
+		return time.Duration(v) * time.Second
 	}
 	return time.Duration(defaultTTLSeconds) * time.Second
 }
 
 func OutputLines() int {
-	if raw := strings.TrimSpace(os.Getenv("AGENTPANE_STATUS_LINES")); raw != "" {
-		if v, err := strconv.Atoi(raw); err == nil && v > 0 {
-			return v
-		}
+	if v, ok := positiveIntEnv("AGENTPANE_STATUS_LINES"); ok {
+		return v
 	}
 	return defaultOutputLines
 }
@@ -224,6 +218,18 @@ func envOrDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func positiveIntEnv(key string) (int, bool) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return 0, false
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v <= 0 {
+		return 0, false
+	}
+	return v, true
 }
 
 func linesFromOutput(output string) []string {
